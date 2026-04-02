@@ -149,7 +149,7 @@ button, input { cursor:pointer; border:none; background:none; font-family:inheri
 .portal-header-inner { max-width: 800px; margin: 0 auto; min-height: 64px; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .portal-logo { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .portal-logo-icon { width: 34px; height: 34px; border-radius: 10px; background: var(--grad); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(109,40,217,.40); }
-.portal-logo-text { font-size: 15px; font-weight: 800; color: var(--t1); white-space: nowrap; }
+.portal-logo-text { max-width: clamp(120px, 26vw, 240px); font-size: 15px; font-weight: 800; color: var(--t1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .portal-page-title { flex: 1; min-width: 0; text-align: center; font-size: 18px; font-weight: 900; color: var(--t1); letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .portal-header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .back-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 16px; background: rgba(124,58,237,.10); border: 1px solid rgba(124,58,237,.22); color: var(--t1); font-size: 14px; font-weight: 900; white-space: nowrap; flex-shrink: 0; box-shadow: 0 10px 24px rgba(15,23,42,.08); transition: transform .2s ease, background .2s ease, box-shadow .2s ease; }

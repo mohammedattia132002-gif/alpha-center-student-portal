@@ -57,7 +57,7 @@ const SplashScreen: React.FC = () => {
           backgroundClip: 'text',
           animation: 'shimmer 3s linear infinite',
         }}>
-          سنتر الألفا
+          سنتر الألفا الأستاذ محمد عطية
         </div>
         <div style={{ fontSize: 13, color: 'rgba(148,163,184,0.8)', fontWeight: 600, marginTop: 8, letterSpacing: '.06em' }}>
           بوابة الطالب الذكية

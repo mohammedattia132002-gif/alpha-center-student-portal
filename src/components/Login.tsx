@@ -8,7 +8,7 @@ import {portalTenantId} from '../lib/tenant';
 import type {Student} from '../types';
 import {ArrowRight,CheckCircle2,Hash,Loader2,Moon,Phone,Sun} from 'lucide-react';
 
-const DEFAULT_CENTER_NAME='سنتر الألفا';
+const DEFAULT_CENTER_NAME='سنتر الألفا الأستاذ محمد عطية';
 const DEFAULT_TEACHER_NAME='الأستاذ';
 
 const loadSettingsFromSupabase=async():Promise<{centerName:string;teacherName:string}>=>{
