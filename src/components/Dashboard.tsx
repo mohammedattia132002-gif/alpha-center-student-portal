@@ -518,7 +518,7 @@ const Dashboard: React.FC = () => {
               <div className="portal-logo-icon">
                 <img src="/header-logo.png" style={{ width: 22, height: 22, objectFit: 'contain' }} alt="Alpha Center" />
               </div>
-              <span className="portal-logo-text">سنتر الألفا الأستاذ محمد عطية</span>
+              <span className="portal-logo-text">سنتر الألفا</span>
             </div>
           )}
 
