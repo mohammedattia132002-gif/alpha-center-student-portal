@@ -20,3 +20,5 @@ inspect_schema.js
 supabase_diagnostic.js
 test_*.js
 verify*.js
+
+.vercel
