@@ -10,7 +10,7 @@ import {
   Brain, Zap, BookOpen, Clock, Calendar, CheckCircle, ArrowLeft,
   ChevronRight, Compass, RefreshCw, BarChart2, Activity
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, 
   XAxis, YAxis, CartesianGrid, Tooltip, Legend 
