@@ -15,26 +15,14 @@ import type {
   GradeRecord,
 } from '../types/domain';
 
+const LIVE = false;
+
 interface AggregateResult {
   profile: StudentProfile | null;
   group: GroupSummary | null;
   attendance: AttendanceRecord[];
   payments: PaymentRecord[];
   grades: GradeRecord[];
-}
-
-/**
- * Once we successfully authenticate a student, we remember whether the
- * tenant filter was needed. This makes the portal work regardless of the
- * exact tenant_id used in the connected Supabase project: if the hardcoded
- * tenant does not match the real data, queries automatically fall back to
- * running without the tenant filter.
- */
-let confirmedTenantId: string | null | undefined = undefined;
-
-/** Apply the tenant filter only when we have a confirmed (non-null) tenant. */
-function eqTenant(query: any, tenantId: string | null): any {
-  return tenantId ? query.eq('tenant_id', tenantId) : query;
 }
 
 function nowIso(): string {
@@ -51,19 +39,16 @@ function dateOnly(value: unknown): string {
 async function resolveStudentGroup(
   client: any,
   studentId: string,
-  tenantId: string | null,
   studentRow?: Record<string, any>,
 ): Promise<{ group: GroupSummary | null; groupId: string | null }> {
   const today = dateOnly(new Date());
   let groupId: string | null = null;
 
-  const { data: enrollments } = await eqTenant(
-    client
-      .from('enrollments')
-      .select('group_id,is_active,start_date,end_date,deleted_at')
-      .eq('student_id', studentId),
-    tenantId,
-  )
+  const { data: enrollments } = await client
+    .from('enrollments')
+    .select('group_id,is_active,start_date,end_date,deleted_at')
+    .eq('student_id', studentId)
+    .eq('tenant_id', portalTenantId)
     .is('deleted_at', null)
     .order('updated_at', { ascending: false })
     .limit(10);
@@ -105,7 +90,6 @@ async function loginByCode(
   client: any,
   studentCode: string,
   phone: string,
-  tenantId: string | null,
 ): Promise<StudentProfile | null> {
   const phoneVariants = [phone];
   const p = phone.replace(/\D/g, '');
@@ -116,10 +100,10 @@ async function loginByCode(
     .flatMap((v) => [`phone.eq.${v}`, `parent_phone.eq.${v}`])
     .join(',');
 
-  const { data: candidates } = await eqTenant(
-    client.from('students').select('*'),
-    tenantId,
-  )
+  const { data: candidates } = await client
+    .from('students')
+    .select('*')
+    .eq('tenant_id', portalTenantId)
     .eq('is_active', true)
     .is('deleted_at', null)
     .or(phoneClause)
@@ -136,10 +120,11 @@ async function loginByCode(
   if (matched) return mapStudentRow(matched);
 
   // Fallback: match by code only
-  const { data: codeRows } = await eqTenant(
-    client.from('students').select('*').eq('student_code', studentCode),
-    tenantId,
-  )
+  const { data: codeRows } = await client
+    .from('students')
+    .select('*')
+    .eq('tenant_id', portalTenantId)
+    .eq('student_code', studentCode)
     .eq('is_active', true)
     .is('deleted_at', null)
     .limit(10);
@@ -165,23 +150,11 @@ export const studentAggregate = {
     if (!client) return { success: false, error: 'تعذر الاتصال بقاعدة البيانات.' };
 
     try {
-      // First try with the configured tenant, then transparently fall back to
-      // querying without the tenant filter so the portal works against any
-      // single-center project regardless of its tenant_id value.
-      let profile = await loginByCode(client, studentCode.trim(), phone.trim(), portalTenantId);
-      let tenantUsed: string | null = portalTenantId;
-
-      if (!profile) {
-        profile = await loginByCode(client, studentCode.trim(), phone.trim(), null);
-        tenantUsed = null;
-      }
-
+      const profile = await loginByCode(client, studentCode.trim(), phone.trim());
       if (!profile) {
         return { success: false, error: 'بيانات الدخول غير صحيحة. تأكد من كود الطالب ورقم الهاتف.' };
       }
-
-      confirmedTenantId = tenantUsed;
-      const { group } = await resolveStudentGroup(client, profile.id, confirmedTenantId);
+      const { group } = await resolveStudentGroup(client, profile.id);
       profile.group = group;
       return { success: true, student: profile };
     } catch (e) {
@@ -201,66 +174,48 @@ export const studentAggregate = {
     if (!client) return empty;
 
     try {
-      // Use the tenant resolved during login. If unknown (e.g. session restored
-      // from localStorage), try the configured tenant then fall back to none.
-      let tenantId: string | null = confirmedTenantId === undefined ? portalTenantId : confirmedTenantId;
-
-      let studentRow: Record<string, any> | null = null;
-      {
-        const { data } = await eqTenant(
-          client.from('students').select('*').eq('id', studentId),
-          tenantId,
-        )
-          .is('deleted_at', null)
-          .maybeSingle();
-        studentRow = (data as Record<string, any>) || null;
-      }
-
-      if (!studentRow && tenantId) {
-        // Retry without tenant filter.
-        tenantId = null;
-        const { data } = await client
-          .from('students')
-          .select('*')
-          .eq('id', studentId)
-          .is('deleted_at', null)
-          .maybeSingle();
-        studentRow = (data as Record<string, any>) || null;
-      }
+      const { data: studentRow } = await client
+        .from('students')
+        .select('*')
+        .eq('id', studentId)
+        .eq('tenant_id', portalTenantId)
+        .is('deleted_at', null)
+        .maybeSingle();
 
       if (!studentRow) return empty;
 
-      confirmedTenantId = tenantId;
-
       const profile = mapStudentRow(studentRow);
-      const { group } = await resolveStudentGroup(client, studentId, tenantId, studentRow);
+      const { group } = await resolveStudentGroup(client, studentId, studentRow);
       profile.group = group;
 
       const [attendanceRes, paymentsRes, gradesRes] = await Promise.all([
-        eqTenant(
-          client.from('attendance').select('*').eq('student_id', studentId),
-          tenantId,
-        )
+        client
+          .from('attendance')
+          .select('*')
+          .eq('student_id', studentId)
+          .eq('tenant_id', portalTenantId)
           .is('deleted_at', null)
           .order('date', { ascending: false })
           .order('recorded_at', { ascending: false })
-          .limit(1000),
-        eqTenant(
-          client.from('payments').select('*').eq('student_id', studentId),
-          tenantId,
-        )
+          .limit(500),
+        client
+          .from('payments')
+          .select('*')
+          .eq('student_id', studentId)
+          .eq('tenant_id', portalTenantId)
           .is('deleted_at', null)
           .order('paid_at', { ascending: false })
           .order('created_at', { ascending: false })
-          .limit(1000),
-        eqTenant(
-          client.from('grades').select('*').eq('student_id', studentId),
-          tenantId,
-        )
+          .limit(500),
+        client
+          .from('grades')
+          .select('*')
+          .eq('student_id', studentId)
+          .eq('tenant_id', portalTenantId)
           .is('deleted_at', null)
           .order('assessment_date', { ascending: false })
           .order('created_at', { ascending: false })
-          .limit(1000),
+          .limit(500),
       ]);
 
       const attendance: AttendanceRecord[] = Array.isArray(attendanceRes.data)
