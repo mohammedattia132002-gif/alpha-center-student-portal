@@ -1,0 +1,6 @@
+{
+  "name": "Electronic Student Portal",
+  "description": "A comprehensive student portal featuring attendance logs, payment status tracking, gradebooks, and an interactive online exam taker.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

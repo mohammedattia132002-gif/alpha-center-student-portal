@@ -1,0 +1,168 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=Tajawal:wght@300;400;500;700;800;900&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Cairo", "Tajawal", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-arabic: "IBM Plex Sans Arabic", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Semantic Typography and UI Colors */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-text-disabled: var(--text-disabled);
+
+  --color-bg-app: var(--bg-app);
+  --color-bg-card: var(--bg-card);
+  --color-border-card: var(--border-card);
+}
+
+:root {
+  --text-primary: #0F172A; /* Slate 900 */
+  --text-secondary: #334155; /* Slate 700 */
+  --text-muted: #64748B; /* Slate 500 */
+  --text-disabled: rgba(148, 163, 184, 0.45);
+  
+  --bg-app: #F8FAFC;
+  --bg-card: rgba(255, 255, 255, 0.88);
+  --border-card: rgba(226, 232, 240, 0.72);
+}
+
+.dark {
+  --text-primary: #F8FAFC; /* Soft White */
+  --text-secondary: #CBD5E1; /* Soft Gray */
+  --text-muted: #94A3B8; /* Muted Slate */
+  --text-disabled: rgba(148, 163, 184, 0.45);
+  
+  --bg-app: #0B0F19; /* Premium slate/navy instead of pure black */
+  --bg-card: rgba(17, 24, 39, 0.75); /* Deep slate card with opacity */
+  --border-card: rgba(255, 255, 255, 0.08); /* Balanced fine-line borders */
+}
+
+/* Custom fade and glow effects for premium dark/light SaaS system */
+@keyframes pulseGlow {
+  0%, 100% {
+    transform: scale(1) translate(0px, 0px);
+    opacity: 0.15;
+  }
+  33% {
+    transform: scale(1.15) translate(30px, -20px);
+    opacity: 0.25;
+  }
+  66% {
+    transform: scale(0.9) translate(-15px, 40px);
+    opacity: 0.18;
+  }
+}
+
+:root:not(.dark) {
+  background-color: var(--bg-app);
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(238, 242, 255, 0.9) 0px, transparent 55%),
+    radial-gradient(at 50% 0%, rgba(245, 247, 251, 0.9) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(224, 231, 255, 0.6) 0px, transparent 50%),
+    radial-gradient(at 50% 100%, rgba(238, 242, 255, 0.7) 0px, transparent 50%);
+  background-attachment: fixed;
+}
+
+.dark {
+  background-color: var(--bg-app);
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 65%),
+    radial-gradient(at 50% 0%, rgba(15, 23, 42, 0.9) 0px, transparent 55%),
+    radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.06) 0px, transparent 50%),
+    radial-gradient(at 50% 100%, rgba(15, 23, 42, 0.9) 0px, transparent 50%);
+  background-attachment: fixed;
+}
+
+/* Premium Light Theme overrides for modern fintech look */
+.light-mode-card {
+  background: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  border: 1px solid rgba(226, 232, 240, 0.72) !important;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.025), 0 1px 4px -1px rgba(15, 23, 42, 0.015) !important;
+}
+
+.light-mode-card-glow {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.light-mode-card-glow:hover {
+  box-shadow: 0 10px 25px -4px rgba(99, 102, 241, 0.04), 0 4px 12px -2px rgba(15, 23, 42, 0.02) !important;
+  border-color: rgba(99, 102, 241, 0.2) !important;
+  transform: translateY(-1px);
+}
+
+.animate-glow-orb-1 {
+  animation: pulseGlow 8s infinite alternate ease-in-out;
+}
+
+.animate-glow-orb-2 {
+  animation: pulseGlow 12s infinite alternate-reverse ease-in-out;
+}
+
+/* Glassmorphism Classes */
+.glass-panel-dark {
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-panel-light {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  border: 1px solid rgba(226, 232, 240, 0.72);
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.025), 0 1px 4px -1px rgba(15, 23, 42, 0.015);
+}
+
+.dark .glass-header {
+  background: rgba(10, 15, 30, 0.7);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.glass-header {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.015);
+}
+
+/* Scrollbar customizations */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+}
+
+/* Hover glow effects */
+.hover-glow {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.dark .hover-glow:hover {
+  box-shadow: 0 0 30px rgba(99, 102, 241, 0.18);
+  border-color: rgba(99, 102, 241, 0.3);
+  transform: translateY(-2px);
+}
+.hover-glow:hover {
+  box-shadow: 0 12px 30px rgba(99, 102, 241, 0.08);
+  border-color: rgba(99, 102, 241, 0.15);
+  transform: translateY(-2px);
+}
+
+
