@@ -195,7 +195,7 @@ export const studentAggregate = {
           .eq('student_id', studentId)
           .eq('tenant_id', portalTenantId)
           .is('deleted_at', null)
-          .order('attendance_date', { ascending: false })
+          .order('date', { ascending: false })
           .order('recorded_at', { ascending: false })
           .limit(500),
         client
@@ -245,8 +245,9 @@ export const studentAggregate = {
 
     try {
       const { data: examsData } = await (client as any)
-        .from('online_exams')
+        .from('platform_exams')
         .select('*')
+        .eq('active', true)
         .order('created_at', { ascending: false });
 
       if (!Array.isArray(examsData)) return [];
@@ -255,30 +256,49 @@ export const studentAggregate = {
 
       for (const exam of examsData) {
         const e = exam as Record<string, any>;
-        const { data: questionsData } = await (client as any)
-          .from('exam_questions')
-          .select('*')
-          .eq('exam_id', e.id);
 
-        const questions = (Array.isArray(questionsData) ? questionsData : []).map((q: any) => ({
-          id: String(q.id),
-          text: String(q.text || ''),
-          options: Array.isArray(q.options) ? q.options : [],
-          correctOptionId: String(q.correct_option_id || ''),
-          points: Number(q.points || 10),
-          explanation: String(q.explanation || '') || undefined,
-        }));
+        const { data: questionsData } = await (client as any)
+          .from('platform_questions')
+          .select('*')
+          .eq('exam_id', e.id)
+          .order('order_index', { ascending: true });
+
+        const questions = [];
+
+        for (const q of (Array.isArray(questionsData) ? questionsData : [])) {
+          const { data: choicesData } = await (client as any)
+            .from('platform_choices')
+            .select('*')
+            .eq('question_id', q.id)
+            .order('order_index', { ascending: true });
+
+          const choices = (Array.isArray(choicesData) ? choicesData : []).map((c: any) => ({
+            id: String(c.id),
+            text: String(c.choice_text || ''),
+          }));
+
+          const correct = (Array.isArray(choicesData) ? choicesData : []).find((c: any) => c.is_correct);
+
+          questions.push({
+            id: String(q.id),
+            text: String(q.question_text || ''),
+            options: choices,
+            correctOptionId: correct ? String(correct.id) : '',
+            points: Number(q.points || 1),
+            explanation: undefined,
+          });
+        }
 
         exams.push({
           id: String(e.id),
           title: String(e.title || ''),
           subject: String(e.subject || ''),
           durationMinutes: Number(e.duration_minutes || 30),
-          totalPoints: Number(e.total_points || 100),
+          totalPoints: Number(e.max_score || 100),
           questions,
-          instructions: Array.isArray(e.instructions) ? e.instructions : [],
-          passingScorePercent: Number(e.passing_score_percent || 60),
-          status: (e.status || 'available') as 'available' | 'completed' | 'expired',
+          instructions: [],
+          passingScorePercent: 60,
+          status: 'available',
         });
       }
 
@@ -304,15 +324,14 @@ export const studentAggregate = {
     if (!client) return { success: true };
 
     try {
-      const { error } = await (client as any).from('exam_results').upsert({
+      const { error } = await (client as any).from('platform_results').insert({
         exam_id: result.examId,
         student_id: result.studentId,
         score: result.score,
         max_score: result.maxScore,
-        percentage: result.percentage,
-        passed: result.passed,
-        answers: result.answers,
-      }, { onConflict: 'student_id,exam_id' });
+        assessment_date: new Date().toISOString(),
+        tenant_id: portalTenantId,
+      });
 
       if (error) return { success: false, error: error.message };
       return { success: true };
@@ -344,8 +363,8 @@ export const studentAggregate = {
         parent_phone: request.parentPhone.trim(),
         student_phone: request.studentPhone?.trim() || null,
         academic_stage: request.academicStage.trim(),
-        grade: request.grade.trim(),
-        academic_group: request.academicGroup.trim() || 'غير محدد',
+        academic_grade: request.grade.trim(),
+        desired_group: request.academicGroup.trim() || 'غير محدد',
         status: 'pending',
       });
 
