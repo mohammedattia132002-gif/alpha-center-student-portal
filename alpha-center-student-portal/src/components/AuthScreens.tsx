@@ -87,9 +87,7 @@ export default function AuthScreens({ onLoginSuccess }: AuthScreensProps) {
       <div className="w-full max-w-4xl grid md:grid-cols-12 gap-6 items-center z-10">
         <div className="md:col-span-5 flex flex-col justify-center space-y-6 text-right font-sans">
           <div className="flex items-center gap-3">
-            <span className="p-3 rounded-2xl bg-indigo-600 text-white shadow-xl shadow-indigo-500/30">
-              <GraduationCap className="w-8 h-8" />
-            </span>
+            <img src="/header-logo.png" alt="سنتر الألفا" className="h-14 w-auto" />
             <div>
               <h1 className="text-2xl font-black tracking-tight text-text-primary">بوابة سنتر الألفا</h1>
               <p className="text-sm text-indigo-650 dark:text-indigo-400 font-bold">الأستاذ محمد عطية - أستاذ الرياضيات</p>

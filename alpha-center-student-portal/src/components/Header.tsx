@@ -52,14 +52,17 @@ export default function Header({ profile, activeTab }: HeaderProps) {
 
   return (
     <header className="sticky top-0 z-40 flex items-center justify-between w-full h-20 px-6 border-b border-border-card bg-bg-card backdrop-blur-md transition-all duration-300">
-      {/* Search / Tab Title Description */}
-      <div className="flex flex-col items-start gap-0.5 text-right w-full md:w-auto">
-        <h1 className="text-base md:text-lg font-black tracking-tight text-text-primary font-sans">
-          {getTabTitleInArabic(activeTab)}
-        </h1>
-        <p className="text-[10px] text-text-muted font-sans">
-          نظام المتابعة الأكاديمي المباشر • الفصل الأكاديمي الحالي 2026
-        </p>
+      {/* Logo + Tab Title */}
+      <div className="flex items-center gap-3">
+        <img src="/header-logo.png" alt="سنتر الألفا" className="hidden sm:block h-10 w-auto" />
+        <div className="flex flex-col items-start gap-0.5 text-right">
+          <h1 className="text-base md:text-lg font-black tracking-tight text-text-primary font-sans">
+            {getTabTitleInArabic(activeTab)}
+          </h1>
+          <p className="text-[10px] text-text-muted font-sans">
+            نظام المتابعة الأكاديمي المباشر • الفصل الأكاديمي الحالي 2026
+          </p>
+        </div>
       </div>
 
       {/* Right Actions Block */}
