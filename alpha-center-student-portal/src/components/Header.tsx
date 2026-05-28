@@ -140,10 +140,9 @@ export default function Header({ profile, activeTab }: HeaderProps) {
           </div>
           <div className="relative">
             <img
-              src={profile.avatar}
-              alt={profile.name}
+              src="/header-logo.png"
+              alt="سنتر الألفا"
               className="w-10 h-10 rounded-xl object-cover ring-2 ring-indigo-500/20"
-              referrerPolicy="no-referrer"
             />
             <span className="absolute bottom-0 right-0 block w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-950" />
           </div>
