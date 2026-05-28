@@ -15,6 +15,48 @@
   --color-bg-app: var(--bg-app);
   --color-bg-card: var(--bg-card);
   --color-border-card: var(--border-card);
+
+  /* ===========================================================
+     Professional Emerald brand palette.
+     The whole UI was originally built on the `indigo` scale, so we
+     remap `indigo` (plus the few stray `purple`/`violet` shades) onto a
+     refined emerald ramp. This recolors every component to emerald in a
+     single place AND defines the off-scale shades the components use
+     (-450 / -505 / -650 / -750) which Tailwind would otherwise drop.
+     =========================================================== */
+  --color-indigo-50: #ecfdf5;
+  --color-indigo-100: #d1fae5;
+  --color-indigo-200: #a7f3d0;
+  --color-indigo-300: #6ee7b7;
+  --color-indigo-400: #34d399;
+  --color-indigo-450: #1fc98c;
+  --color-indigo-500: #10b981;
+  --color-indigo-505: #0fb079;
+  --color-indigo-600: #059669;
+  --color-indigo-650: #048a5f;
+  --color-indigo-700: #047857;
+  --color-indigo-750: #036a4d;
+  --color-indigo-800: #065f46;
+  --color-indigo-900: #064e3b;
+  --color-indigo-950: #022c22;
+
+  /* Remove purple/violet (per brand) by folding them into the emerald ramp */
+  --color-purple-400: #34d399;
+  --color-purple-500: #10b981;
+  --color-purple-505: #0fb079;
+  --color-purple-600: #059669;
+  --color-violet-500: #10b981;
+  --color-violet-900: #064e3b;
+
+  /* Off-scale neutral shades used throughout the UI */
+  --color-slate-505: #5e6c83;
+  --color-slate-850: #161e2e;
+  --color-slate-955: #060b16;
+  --color-neutral-450: #969696;
+
+  /* Off-scale rose shades used for alerts / destructive actions */
+  --color-rose-450: #fb5870;
+  --color-rose-505: #f23652;
 }
 
 :root {
@@ -58,19 +100,19 @@
 :root:not(.dark) {
   background-color: var(--bg-app);
   background-image: 
-    radial-gradient(at 0% 0%, rgba(238, 242, 255, 0.9) 0px, transparent 55%),
-    radial-gradient(at 50% 0%, rgba(245, 247, 251, 0.9) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(224, 231, 255, 0.6) 0px, transparent 50%),
-    radial-gradient(at 50% 100%, rgba(238, 242, 255, 0.7) 0px, transparent 50%);
+    radial-gradient(at 0% 0%, rgba(209, 250, 229, 0.85) 0px, transparent 55%),
+    radial-gradient(at 50% 0%, rgba(240, 253, 248, 0.9) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(167, 243, 208, 0.45) 0px, transparent 50%),
+    radial-gradient(at 50% 100%, rgba(209, 250, 229, 0.6) 0px, transparent 50%);
   background-attachment: fixed;
 }
 
 .dark {
   background-color: var(--bg-app);
   background-image: 
-    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 65%),
+    radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.14) 0px, transparent 65%),
     radial-gradient(at 50% 0%, rgba(15, 23, 42, 0.9) 0px, transparent 55%),
-    radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.06) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(5, 150, 105, 0.08) 0px, transparent 50%),
     radial-gradient(at 50% 100%, rgba(15, 23, 42, 0.9) 0px, transparent 50%);
   background-attachment: fixed;
 }
@@ -88,8 +130,8 @@
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .light-mode-card-glow:hover {
-  box-shadow: 0 10px 25px -4px rgba(99, 102, 241, 0.04), 0 4px 12px -2px rgba(15, 23, 42, 0.02) !important;
-  border-color: rgba(99, 102, 241, 0.2) !important;
+  box-shadow: 0 10px 25px -4px rgba(16, 185, 129, 0.06), 0 4px 12px -2px rgba(15, 23, 42, 0.02) !important;
+  border-color: rgba(16, 185, 129, 0.22) !important;
   transform: translateY(-1px);
 }
 

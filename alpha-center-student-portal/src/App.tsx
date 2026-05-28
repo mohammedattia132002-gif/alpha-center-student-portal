@@ -167,18 +167,19 @@ function StudentPortalApp() {
     const loadLiveData = async () => {
       try {
         const dash = await studentAggregate.loadDashboard(currentStudent.id);
+        // When a real student record is found in Supabase, the live data is the
+        // single source of truth: replace the seed/demo data entirely (even with
+        // empty arrays) so the portal never mixes real records with sample data.
         if (dash.profile) {
           setProfile(prev => ({ ...prev, ...dash.profile }));
-        }
-        if (dash.attendance.length > 0) setAttendance(dash.attendance);
-        if (dash.payments.length > 0) {
+          setAttendance(dash.attendance);
           setPayments(dash.payments);
+          setGrades(dash.grades);
           const totalPending = dash.payments
             .filter(p => p.status === 'pending')
             .reduce((acc, p) => acc + p.amount, 0);
           setProfile(prev => ({ ...prev, balance: totalPending }));
         }
-        if (dash.grades.length > 0) setGrades(dash.grades);
       } catch (e) {
         console.warn('Failed to load live data from Supabase:', e);
       }
