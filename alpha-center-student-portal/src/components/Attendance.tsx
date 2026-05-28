@@ -105,8 +105,8 @@ export default function Attendance({ records, onAddExcuse }: AttendanceProps) {
 
   // Filter records
   const filteredRecords = records.filter(rec => {
-    const matchesSearch = rec.subject.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          rec.lecturer.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (rec.subject || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (rec.lecturer || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || rec.status === statusFilter;
     return matchesSearch && matchesStatus;
   });

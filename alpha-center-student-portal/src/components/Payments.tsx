@@ -162,7 +162,7 @@ export default function Payments({ records, onPayInvoice }: PaymentsProps) {
   // Filter processes
   const filteredInvoices = records.filter(inv => {
     const matchesTab = activeTab === 'all' || inv.status === activeTab;
-    const matchesSearch = inv.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = (inv.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                           (inv.receiptNo || '').toLowerCase().includes(searchTerm.toLowerCase());
     return matchesTab && matchesSearch;
   });

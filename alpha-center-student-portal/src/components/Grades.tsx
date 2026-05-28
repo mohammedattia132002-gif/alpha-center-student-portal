@@ -44,7 +44,7 @@ export default function Grades({ records }: GradesProps) {
 
   // Filter records
   const filteredGrades = records.filter(grade => {
-    const matchesSearch = grade.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = (grade.subject || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                           (grade.subjectCode || '').toLowerCase().includes(searchTerm.toLowerCase());
     
     let matchesCategory = false;
