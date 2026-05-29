@@ -2,15 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { studentAggregate, isSupabaseConfigured } from './db';
 import type { StudentProfile, AttendanceRecord, PaymentRecord, GradeRecord, Exam, NotificationItem } from './types/domain';
 import { initialStudentProfile, initialAttendanceRecords, initialPaymentRecords, initialGradeRecords, examsData } from './data';
-import Header from './components/Header';
+
 import Dashboard from './components/Dashboard';
 import Attendance from './components/Attendance';
-import Payments from './components/Payments';
+
 import Grades from './components/Grades';
 import ExamTaker from './components/ExamTaker';
 import AuthScreens from './components/AuthScreens';
 import AIAnalysis from './components/AIAnalysis';
-import { LayoutDashboard, CalendarCheck, CreditCard, GraduationCap, FileText, Bell, Sparkles, LogOut, Brain, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, CalendarCheck, GraduationCap, FileText, Bell, Sparkles, LogOut, Brain, Sun, Moon } from 'lucide-react';
 import { ToastProvider, useToast } from './components/Toast';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -113,18 +113,6 @@ function StudentPortalApp() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notificationsFilter, setNotificationsFilter] = useState<'all' | 'attendance' | 'payments' | 'exams'>('all');
 
-  const [islandText, setIslandText] = useState<string | null>(null);
-  const [islandIcon, setIslandIcon] = useState<'status' | 'success' | 'warning' | 'grade' | 'fawry'>('status');
-  const [islandActive, setIslandActive] = useState(false);
-
-  const triggerDynamicIsland = (text: string, iconType: 'status' | 'success' | 'warning' | 'grade' | 'fawry' = 'status') => {
-    setIslandText(text);
-    setIslandIcon(iconType);
-    setIslandActive(true);
-    playMobileHapticTap('pop');
-    setTimeout(() => setIslandActive(false), 3800);
-  };
-
   const [currentTime, setCurrentTime] = useState('10:42 ص');
   useEffect(() => {
     const updateTime = () => {
@@ -201,56 +189,6 @@ function StudentPortalApp() {
   useEffect(() => { localStorage.setItem('portal_exams', JSON.stringify(exams)); }, [exams]);
   useEffect(() => { localStorage.setItem('portal_notifications', JSON.stringify(notifications)); }, [notifications]);
 
-  const handleAddExcuse = (subject: string, date: string, remarks: string) => {
-    const newRecord: AttendanceRecord = {
-      id: `att-exc-${Date.now()}`,
-      date,
-      subject,
-      status: 'excused',
-      notes: remarks,
-    };
-    const updatedAttendance = [newRecord, ...attendance];
-    setAttendance(updatedAttendance);
-    const total = updatedAttendance.length;
-    const present = updatedAttendance.filter(r => r.status === 'present').length;
-    const excused = updatedAttendance.filter(r => r.status === 'excused').length;
-    const late = updatedAttendance.filter(r => r.status === 'late').length;
-    const newRate = total > 0 ? parseFloat((((present + excused + (late * 0.7)) / total) * 100).toFixed(1)) : 100;
-    setProfile(prev => ({ ...prev, attendanceRate: newRate }));
-    playMobileHapticTap('success');
-    triggerDynamicIsland(`ثبت عذر لمقرر ${subject} 📋`, 'success');
-    const newNotif: NotificationItem = {
-      id: `notif-${Date.now()}`, title: 'طلب التماس غياب قيد المراجعة',
-      message: `تم رفع التماس غياب رسمي لمقرر "${subject}" بتاريخ ${date} بنجاح.`,
-      category: 'attendance', timestamp: 'الآن', read: false,
-    };
-    setNotifications(prev => [newNotif, ...prev]);
-    showToast('تم تقديم العذر بنجاح 📋', `تم تسجيل طلب العذر لمادة "${subject}"`, 'info');
-  };
-
-  const handlePayInvoice = (invoiceId: string, _method?: string) => {
-    let invoiceAmt = 0;
-    const updatedPayments = payments.map(p => {
-      if (p.id === invoiceId) {
-        invoiceAmt = p.amount;
-        return { ...p, status: 'paid' as const, paidAt: new Date().toISOString().split('T')[0] };
-      }
-      return p;
-    });
-    setPayments(updatedPayments);
-    setProfile(prev => ({ ...prev, balance: Math.max(0, prev.balance - invoiceAmt) }));
-    playMobileHapticTap('success');
-    triggerDynamicIsland(`تلقينا دفع بقيمة ${invoiceAmt} جم 💳`, 'fawry');
-    const targetInvoice = payments.find(p => p.id === invoiceId);
-    const newNotif: NotificationItem = {
-      id: `notif-${Date.now()}`, title: 'إثبات سداد بند مالي 💳',
-      message: `تم دفع "${targetInvoice?.title || 'رسوم دراسية'}" بقيمة ${invoiceAmt} جم بنجاح.`,
-      category: 'payments', timestamp: 'الآن', read: false,
-    };
-    setNotifications(prev => [newNotif, ...prev]);
-    showToast('تم تأكيد السداد المالي 💳', `تم دفع ${invoiceAmt} جم بنجاح.`, 'success');
-  };
-
   const handleAddGrade = (newGrade: GradeRecord) => {
     const alreadyExists = grades.some(g => g.subject === newGrade.subject && g.type === 'final');
     if (!alreadyExists) {
@@ -264,7 +202,6 @@ function StudentPortalApp() {
     });
     setExams(updatedExams);
     playMobileHapticTap('success');
-    triggerDynamicIsland(`جديد: رصد تقدير ${newGrade.letterGrade} 🎉`, 'grade');
     const newNotif: NotificationItem = {
       id: `notif-${Date.now()}`, title: 'إعلان نتيجة الامتحان رسمياً 🏆',
       message: `حصلت على درجة ${newGrade.score}/${newGrade.maxScore} في "${newGrade.subject}".`,
@@ -272,6 +209,9 @@ function StudentPortalApp() {
     };
     setNotifications(prev => [newNotif, ...prev]);
     showToast('تم رصد ورفع علامتك الأكاديمية 🏆', `درجة ${newGrade.score}/${newGrade.maxScore}`, 'success');
+    if (currentStudent?.id) {
+      studentAggregate.saveGrade(newGrade, currentStudent.id).catch(() => {});
+    }
   };
 
   const handleResetData = () => {
@@ -304,7 +244,7 @@ function StudentPortalApp() {
     const diffX = touchStartXRef.current - e.changedTouches[0].clientX;
     const diffY = touchStartYRef.current - e.changedTouches[0].clientY;
     if (Math.abs(diffX) > 85 && Math.abs(diffY) < 60) {
-      const order = ['dashboard', 'attendance', 'payments', 'grades', 'exams'];
+      const order = ['dashboard', 'attendance', 'grades', 'exams'];
       const currentIndex = order.indexOf(activeTab);
       if (diffX > 0 && currentIndex < order.length - 1) changeTabWithHaptic(order[currentIndex + 1]);
       else if (diffX < 0 && currentIndex > 0) changeTabWithHaptic(order[currentIndex - 1]);
@@ -329,9 +269,7 @@ function StudentPortalApp() {
       case 'dashboard':
         return <Dashboard profile={profile} attendance={attendance} payments={payments} grades={grades} exams={exams} onNavigate={(tab) => changeTabWithHaptic(tab)} />;
       case 'attendance':
-        return <Attendance records={attendance} onAddExcuse={handleAddExcuse} />;
-      case 'payments':
-        return <Payments records={payments} onPayInvoice={handlePayInvoice} />;
+        return <Attendance records={attendance} />;
       case 'grades':
         return <Grades records={grades} />;
       case 'exams':
@@ -346,7 +284,7 @@ function StudentPortalApp() {
   const navItems = [
     { key: 'dashboard', label: 'الرئيسية', icon: LayoutDashboard },
     { key: 'attendance', label: 'التحضير', icon: CalendarCheck },
-    { key: 'payments', label: 'المدفوعات', icon: CreditCard },
+
     { key: 'grades', label: 'الدرجات', icon: GraduationCap },
     { key: 'exams', label: 'الامتحانات', icon: FileText },
   ];
