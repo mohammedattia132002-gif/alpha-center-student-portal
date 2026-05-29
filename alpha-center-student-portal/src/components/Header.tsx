@@ -132,18 +132,11 @@ export default function Header({ profile, activeTab }: HeaderProps) {
           )}
         </div>
 
-        {/* User Card with custom decoration */}
+        {/* User info */}
         <div className="flex items-center gap-3 pr-2 border-r border-border-card">
           <div className="flex flex-col items-end">
             <span className="text-xs font-bold text-text-primary leading-none font-sans">{profile.name}</span>
             <span className="text-[10px] text-indigo-650 dark:text-indigo-400 mt-1 font-mono tracking-tight font-black">{profile.studentCode || profile.id}</span>
-          </div>
-          <div className="relative">
-            <img
-              src="/header-logo.png"
-              alt="شعار سنتر الألفا"
-              className="w-10 h-10 rounded-xl object-cover ring-2 ring-indigo-500/20"
-            />
           </div>
         </div>
 
