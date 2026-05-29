@@ -10,7 +10,7 @@ import {
   Brain, Zap, BookOpen, Clock, Calendar, CheckCircle, ArrowLeft,
   ChevronRight, Compass, RefreshCw, BarChart2, Activity
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, 
   XAxis, YAxis, CartesianGrid, Tooltip, Legend 
@@ -321,10 +321,10 @@ export default function AIAnalysis({ profile, grades, attendance, onNavigate }: 
                     <Brain className="w-5 h-5 animate-pulse" />
                   </div>
                   <div className="space-y-1 text-right flex-1">
-                    <span className="text-[10px] text-indigo-500 font-bold block">مقرر برمجيات • مراجعة الأنماط</span>
-                    <h4 className="text-xs font-extrabold text-slate-800 dark:text-white">تحسين استيعاب "Patterns & Structural MVC"</h4>
+                    <span className="text-[10px] text-indigo-500 font-bold block">مقرر الرياضيات • تفاضل وتكامل</span>
+                    <h4 className="text-xs font-extrabold text-slate-800 dark:text-white">مراجعة قواعد الاشتقاق</h4>
                     <p className="text-[11px] text-gray-600 dark:text-slate-400 leading-relaxed font-sans pb-2">
-                      تم رصد بعض الإجابات غير الموفقة في الامتحانات التجريبية السابقة حول المخططات المعمارية. نوصي بمراجعة المحاضرة الثالثة مع الديسكربشن المرفق لها.
+                      يُظهر أداؤك حاجة لمراجعة قاعدة السلسلة (Chain Rule) والاشتقاق الضمني. نوصي بحل التمارين من المحاضرة الخامسة.
                     </p>
                     <div className="flex gap-2 justify-end pt-1">
                       <span className="flex items-center gap-1 text-[10px] font-bold text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/20">
@@ -341,10 +341,10 @@ export default function AIAnalysis({ profile, grades, attendance, onNavigate }: 
                     <Compass className="w-5 h-5" />
                   </div>
                   <div className="space-y-1 text-right flex-1">
-                    <span className="text-[10px] text-teal-600 dark:text-teal-400 font-bold block">مقرر ذكاء اصطناعي • تدريب جاري</span>
-                    <h4 className="text-xs font-extrabold text-slate-800 dark:text-white">الجهوزية الكاملة للامتحان الشامل</h4>
+                    <span className="text-[10px] text-teal-600 dark:text-teal-400 font-bold block">مقرر الرياضيات • هندسة فراغية</span>
+                    <h4 className="text-xs font-extrabold text-slate-800 dark:text-white">الإتقان في الإحداثيات الفراغية</h4>
                     <p className="text-[11px] text-gray-600 dark:text-slate-400 leading-relaxed font-sans pb-2">
-                      مستوى درجاتك في أسئلة (Neural Networks) ممتازة ومثالية جداً! نوصيك بالدخول وتأكيد تفعيل الاختبار الشامل النهائي لتأكيد الحصول على معدل الأمتياز.
+                      أداؤك في أسئلة المتجهات والمستويات ممتاز! نوصيك باختبار نفسك على المسائل الشاملة قبل الامتحان النهائي.
                     </p>
                     <div className="flex gap-2 justify-end pt-1">
                       <span className="flex items-center gap-1 text-[10px] font-bold text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded-lg border border-teal-500/20">

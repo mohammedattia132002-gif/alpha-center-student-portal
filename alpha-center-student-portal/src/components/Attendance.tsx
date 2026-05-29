@@ -3,11 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AttendanceRecord, AttendanceStatus } from '../types/domain';
 import { 
-  Calendar, CheckCircle, AlertCircle, Clock, FileWarning, 
-  Search, Filter, Plus, FileText, Upload, Trash2, CheckCircle2,
+  Calendar, AlertCircle, Clock, FileWarning, 
+  Search, Filter, FileText, CheckCircle2,
   SlidersHorizontal, LayoutGrid, Milestone, RotateCcw, Sparkles,
   ArrowUpDown, User, ChevronRight, Share2, Info, RefreshCw, X, HelpCircle
 } from 'lucide-react';
@@ -15,28 +15,15 @@ import { motion, AnimatePresence } from 'motion/react';
 
 interface AttendanceProps {
   records: AttendanceRecord[];
-  onAddExcuse: (subject: string, date: string, remarks: string) => void;
 }
 
-export default function Attendance({ records, onAddExcuse }: AttendanceProps) {
+export default function Attendance({ records }: AttendanceProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | AttendanceStatus>('all');
-  const [showExcuseForm, setShowExcuseForm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Submit Excuse state
-  const [excuseSubject, setExcuseSubject] = useState('');
-  const [excuseDate, setExcuseDate] = useState('');
-  const [excuseReason, setExcuseReason] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [formSubmitted, setFormSubmitted] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
 
   // Selected Day log info for modal detail trigger
   const [selectedDayLog, setSelectedDayLog] = useState<AttendanceRecord | null>(null);
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Trigger skeleton loader simulation on search / status filters
   useEffect(() => {
@@ -46,29 +33,6 @@ export default function Attendance({ records, onAddExcuse }: AttendanceProps) {
     }, 380);
     return () => clearTimeout(timer);
   }, [searchTerm, statusFilter]);
-
-  // Handle excuse form submission
-  const submitExcuse = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!excuseSubject || !excuseDate || !excuseReason) return;
-    
-    // Call parent handler
-    onAddExcuse(
-      excuseSubject, 
-      excuseDate, 
-      `${excuseReason}${selectedFile ? ` (مرفق رسمي معتمد: ${selectedFile.name})` : ''}`
-    );
-
-    setFormSubmitted(true);
-    setTimeout(() => {
-      setExcuseSubject('');
-      setExcuseDate('');
-      setExcuseReason('');
-      setSelectedFile(null);
-      setFormSubmitted(false);
-      setShowExcuseForm(false);
-    }, 1800);
-  };
 
   const getStatusDetails = (status: AttendanceStatus) => {
     switch (status) {
@@ -119,54 +83,14 @@ export default function Attendance({ records, onAddExcuse }: AttendanceProps) {
   const excusedCount = records.filter(r => r.status === 'excused').length;
   const attendanceRate = total > 0 ? (((presentCount + excusedCount + (lateCount * 0.72)) / total) * 100).toFixed(1) : "100";
 
-  // Simulate Drag Drop events
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      simulateFileUpload(e.dataTransfer.files[0]);
-    }
-  };
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      simulateFileUpload(e.target.files[0]);
-    }
-  };
-  const simulateFileUpload = (file: File) => {
-    setSelectedFile(file);
-    setUploadProgress(0);
-    const interval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          return 100;
-        }
-        return prev + 20;
-      });
-    }, 120);
-  };
-
-  const clearFile = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setSelectedFile(null);
-    setUploadProgress(0);
-  };
-
   // Generate 28 blocks for Attendance Heatmap matrix represents recent days
   const heatmapDays = Array.from({ length: 28 }, (_, i) => {
-    const rec = records[i % records.length];
+    const rec = records[i < records.length ? i : undefined];
     return {
       id: rec?.id || `heat-idx-${i}`,
-      status: rec?.status || 'present',
-      date: rec?.date || '2026-05-18',
-      subject: rec?.subject || 'محاضرة مكملة'
+      status: rec?.status || 'empty',
+      date: rec?.date || '',
+      subject: rec?.subject || ''
     };
   }).reverse();
 
@@ -223,14 +147,6 @@ export default function Attendance({ records, onAddExcuse }: AttendanceProps) {
           </div>
         </div>
 
-        {/* Trigger Excuse bottom-sheet button */}
-        <button 
-          onClick={() => { setShowExcuseForm(true); playHapticTap(); }}
-          className="w-full py-2.5 bg-indigo-650 hover:bg-indigo-700 text-white font-black rounded-2xl text-xs flex items-center justify-center gap-1.5 shadow-md shadow-indigo-500/10 hover-glow active:scale-98 transition-all cursor-pointer"
-        >
-          <span>تقديم طلب التماس / عذر مرضي غياب</span>
-          <Plus className="w-4.5 h-4.5" />
-        </button>
       </div>
 
       {/* 2. DUOLINGO STYLE CALENDAR HEATMAP WITH GLOW EFFECTS */}
@@ -250,14 +166,15 @@ export default function Attendance({ records, onAddExcuse }: AttendanceProps) {
               late: 'bg-amber-500 shadow-amber-500/15 border-amber-500/25',
               absent: 'bg-rose-500 shadow-rose-500/15 border-rose-500/25',
               excused: 'bg-indigo-500 shadow-indigo-500/15 border-indigo-500/25',
+              empty: 'bg-neutral-200/40 dark:bg-slate-800/30 border-neutral-200/20 dark:border-slate-800/20',
             };
             return (
               <motion.button
                 key={ix}
-                whileHover={{ scale: 1.15 }}
-                whileTap={{ scale: 0.9 }}
+                whileHover={{ scale: day.status !== 'empty' ? 1.15 : 1 }}
+                whileTap={{ scale: day.status !== 'empty' ? 0.9 : 1 }}
                 onClick={() => {
-                  const associatedRec = records[ix % records.length];
+                  const associatedRec = records[ix < records.length ? records.length - 1 - ix : undefined];
                   if (associatedRec) {
                     setSelectedDayLog(associatedRec);
                   }
@@ -461,175 +378,7 @@ export default function Attendance({ records, onAddExcuse }: AttendanceProps) {
         )}
       </AnimatePresence>
 
-      {/* 6. IOS-STYLE EXCUSE ENTRY BOTTOM SHEET */}
-      <AnimatePresence>
-        {showExcuseForm && (
-          <div className="fixed inset-0 z-50 flex flex-col justify-end">
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }} 
-              onClick={() => setShowExcuseForm(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-xs" 
-            />
 
-            <motion.div 
-              initial={{ y: '100%' }} 
-              animate={{ y: 0 }} 
-              exit={{ y: '100%' }} 
-              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className="bg-white dark:bg-slate-900 rounded-t-[32px] border-t border-white/10 p-5 z-10 w-full space-y-4 max-h-[85%] overflow-y-auto font-sans text-right select-none"
-              dir="rtl"
-            >
-              <div className="w-12 h-1 bg-gray-300 dark:bg-neutral-800 rounded-full mx-auto" />
-
-              <div className="flex items-center justify-between border-b border-gray-100/60 dark:border-slate-850/50 pb-3">
-                <div className="text-right">
-                  <h3 className="text-sm font-black text-slate-800 dark:text-white font-sans">تقديم مستند التماس غياب رسمي</h3>
-                  <p className="text-[10px] text-neutral-450 block mt-0.5">يرفع الطلب للمجلس الطبي وشؤون الطلاب الأكاديمية</p>
-                </div>
-                <button 
-                  onClick={() => setShowExcuseForm(false)}
-                  className="p-1.5 hover:bg-neutral-100 dark:hover:bg-slate-800 rounded-full text-neutral-450 cursor-pointer"
-                >
-                  <X className="w-4.5 h-4.5" />
-                </button>
-              </div>
-
-              {formSubmitted ? (
-                <div className="py-8 text-center space-y-4 font-sans">
-                  <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto">
-                    <CheckCircle className="w-8 h-8" />
-                  </div>
-                  <h3 className="text-sm font-black text-slate-800 dark:text-white">تم تقديم الالتماس بنجاح!</h3>
-                  <p className="text-xs text-neutral-500 dark:text-slate-400">ستقوم شؤون الطلاب والمجلس الطبي الأكاديمي بدراسة التماسك واعتماده قريباً.</p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFormSubmitted(false);
-                      setShowExcuseForm(false);
-                    }}
-                    className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
-                  >
-                    إغلاق البوابة
-                  </button>
-                </div>
-              ) : (
-                <form onSubmit={submitExcuse} className="space-y-4 text-right">
-                  
-                  {/* Select Subject */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-black text-slate-700 dark:text-zinc-300 block">حدد مقرر المحاضرة المطلوب تقديم التماس له:</label>
-                    <select 
-                       required
-                       value={excuseSubject}
-                       onChange={(e) => setExcuseSubject(e.target.value)}
-                       className="w-full text-xs p-3 text-right bg-neutral-50 dark:bg-slate-950 border border-neutral-200/50 dark:border-slate-850 rounded-2xl focus:outline-none focus:ring-1 focus:ring-indigo-500 font-sans text-slate-800 dark:text-slate-100"
-                    >
-                      <option value="">-- اضغط للاختيار من المقررات المسجلة --</option>
-                      <option value="الرياضيات البحتة">الرياضيات البحتة (تفاضل وتكامل)</option>
-                      <option value="الجبر والهندسة الفراغية">الجبر والهندسة الفراغية</option>
-                      <option value="الرياضيات التطبيقية (الاستاتيكا)">الرياضيات التطبيقية (الاستاتيكا)</option>
-                      <option value="الرياضيات التطبيقية (الديناميكا)">الرياضيات التطبيقية (الديناميكا)</option>
-                    </select>
-                  </div>
-
-                  {/* Input Date */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-black text-slate-700 dark:text-zinc-300 block">تاريخ الغياب المرصوف للمراجعة:</label>
-                    <input 
-                      type="date"
-                      required
-                      value={excuseDate}
-                      onChange={(e) => setExcuseDate(e.target.value)}
-                      className="w-full text-xs p-3 text-right bg-neutral-50 dark:bg-slate-950 border border-neutral-200/50 dark:border-slate-850 rounded-2xl focus:outline-none focus:ring-1 focus:ring-indigo-500 font-sans font-mono text-slate-800 dark:text-slate-100"
-                    />
-                  </div>
-
-                  {/* Input Reason */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-black text-slate-700 dark:text-zinc-300 block">تفصيل الأسباب الموجبة للغياب بالتفصيل:</label>
-                    <textarea 
-                      required
-                      placeholder="يرجى توضيح الظروف الطبية أو الشخصية بشكل وافٍ..."
-                      rows={3}
-                      value={excuseReason}
-                      onChange={(e) => setExcuseReason(e.target.value)}
-                      className="w-full text-xs p-3 text-right bg-neutral-50 dark:bg-slate-950 border border-neutral-200/50 dark:border-slate-850 rounded-2xl focus:outline-none focus:ring-1 focus:ring-indigo-500 font-sans leading-relaxed text-slate-800 dark:text-slate-100"
-                    />
-                  </div>
-
-                  {/* DRAG AND DROP FILE UPLOAD AREA */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-black text-slate-700 dark:text-zinc-300 block">ارفع الشهادة الطبية أو مستند الإثبات ملموساً:</label>
-                    
-                    <div 
-                      onDragOver={handleDragOver}
-                      onDragLeave={handleDragLeave}
-                      onDrop={handleDrop}
-                      onClick={() => fileInputRef.current?.click()}
-                      className={'p-5 border-2 border-dashed rounded-3xl text-center flex flex-col items-center justify-center cursor-pointer transition-all ' + (
-                        isDragging 
-                          ? 'border-indigo-500 bg-indigo-500/5' 
-                          : 'border-neutral-200 dark:border-slate-800 hover:border-indigo-500 dark:hover:border-slate-700 bg-neutral-50/50 dark:bg-slate-950/40'
-                      )}
-                    >
-                      <input 
-                        type="file" 
-                        ref={fileInputRef}
-                        className="hidden"
-                        onChange={handleFileSelect}
-                        accept="image/*,application/pdf"
-                      />
-
-                      <Upload className="w-7 h-7 text-neutral-400 animate-bounce mb-2" />
-                      
-                      {selectedFile ? (
-                        <div className="space-y-1 w-full px-2" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-between text-right gap-2">
-                            <span className="block text-xs font-black text-indigo-600 dark:text-indigo-400 truncate flex-1">{selectedFile.name}</span>
-                            <button type="button" onClick={clearFile} className="p-1 hover:bg-rose-500/10 rounded-full text-rose-600 shrink-0 cursor-pointer">
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                          <span className="block text-[10px] text-neutral-400 text-right">الحجم الكلي: {(selectedFile.size / 1024).toFixed(1)} KB</span>
-                          
-                          <div className="w-full h-1 bg-neutral-200 dark:bg-slate-850 rounded-full overflow-hidden mt-2">
-                            <div className="h-full bg-indigo-600 transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-0.5 select-none">
-                          <span className="block text-[11px] font-black text-indigo-600 dark:text-indigo-400">اسحب الملف وألقه هنا أو اضغط للاستعراض</span>
-                          <span className="block text-[9px] text-neutral-400 leading-normal">يدعم الصيغ المعتمدة PDF, JPG, PNG بحجم أقصى 5 ميجابايت</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Action buttons list */}
-                  <div className="flex gap-3 pt-2">
-                    <button 
-                      type="submit"
-                      className="flex-1 py-3 bg-indigo-650 hover:bg-indigo-700 text-white font-black rounded-2xl text-xs transition-all shadow-xs active:scale-98 cursor-pointer"
-                    >
-                      إرسال وتأكيد الطلب
-                    </button>
-                    <button 
-                      type="button"
-                      onClick={() => setShowExcuseForm(false)}
-                      className="px-4 py-3 bg-neutral-100 hover:bg-neutral-200 dark:bg-slate-850 text-neutral-700 dark:text-neutral-300 font-bold rounded-2xl text-xs transition-colors cursor-pointer"
-                    >
-                      إلغاء
-                    </button>
-                  </div>
-
-                </form>
-              )}
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

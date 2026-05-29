@@ -15,8 +15,6 @@ import type {
   GradeRecord,
 } from '../types/domain';
 
-const LIVE = false;
-
 interface AggregateResult {
   profile: StudentProfile | null;
   group: GroupSummary | null;
@@ -331,6 +329,35 @@ export const studentAggregate = {
         max_score: result.maxScore,
         assessment_date: new Date().toISOString(),
         tenant_id: portalTenantId,
+      });
+
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  async saveGrade(grade: GradeRecord, studentId: string): Promise<{ success: boolean; error?: string }> {
+    if (!isSupabaseConfigured()) return { success: true };
+
+    const client = getSupabaseClient();
+    if (!client) return { success: true };
+
+    try {
+      const { error } = await (client as any).from('grades').upsert({
+        id: grade.id,
+        student_id: studentId,
+        tenant_id: portalTenantId,
+        subject: grade.subject,
+        score: grade.score,
+        max_score: grade.maxScore,
+        percentage: grade.percentage,
+        letter_grade: grade.letterGrade || null,
+        assessment_date: grade.date,
+        type: grade.type || 'final',
+        passed: grade.passed ?? true,
+        remarks: grade.notes || null,
       });
 
       if (error) return { success: false, error: error.message };

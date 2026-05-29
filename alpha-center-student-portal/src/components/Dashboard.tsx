@@ -112,7 +112,7 @@ export default function Dashboard({ profile, attendance, payments, grades, exams
       { id: '1', text: "تصفح والاطلاع على مواد الفصل الحالي ومستوى الحضور", done: true },
       { id: '2', text: "حل الاختبار التجريبي المخصص للاشتقاق والتكامل", done: false },
       { id: '3', text: "مراجعة كشف درجات الامتحان النصفي والاستحقاقات", done: false },
-      { id: '4', text: "تحضير وتقديم طلب عذر معتمد إذا لزم الأمر", done: false }
+      { id: '4', text: "مراجعة جداول الحضور والمواظبة على المحاضرات", done: false }
     ];
   });
 
@@ -297,8 +297,8 @@ export default function Dashboard({ profile, attendance, payments, grades, exams
                   <CalendarCheck className="w-4.5 h-4.5" />
                 </span>
                 <div className="space-y-0.5">
-                  <span className="block text-xs font-black text-text-primary">تقديم عذر طبي</span>
-                  <span className="block text-[9px] text-text-muted">تحميل والتماس الغياب</span>
+                  <span className="block text-xs font-black text-text-primary">سجل الحضور</span>
+                  <span className="block text-[9px] text-text-muted">متابعة حضوري والاطلاع على التفاصيل</span>
                 </div>
               </div>
 

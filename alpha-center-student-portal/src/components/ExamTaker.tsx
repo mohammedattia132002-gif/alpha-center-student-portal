@@ -272,7 +272,7 @@ export default function ExamTaker({ exams, onAddGrade }: ExamTakerProps) {
       letterGrade: letter,
       date: attempt.takenAt,
       notes: `تم اجتياز الاختبار الرقمي المعزز وتوثيق العلامة بنسبة بلغت ${scorePct.toFixed(0)}%.`,
-      percentage: gpaW,
+      percentage: scorePct,
       passed: isPassing
     };
 
