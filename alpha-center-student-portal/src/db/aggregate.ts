@@ -15,6 +15,8 @@ import type {
   GradeRecord,
 } from '../types/domain';
 
+const LIVE = false;
+
 interface AggregateResult {
   profile: StudentProfile | null;
   group: GroupSummary | null;
@@ -186,7 +188,38 @@ export const studentAggregate = {
       const { group } = await resolveStudentGroup(client, studentId, studentRow);
       profile.group = group;
 
-      const [attendanceRes, paymentsRes, gradesRes] = await Promise.all([
+      // Fetch attendance and also get session+group info to enrich records
+      const fetchGroupMap = async () => {
+        const { data: enrollments } = await (client as any)
+          .from('enrollments')
+          .select('id, group_id')
+          .eq('student_id', studentId)
+          .eq('tenant_id', portalTenantId)
+          .is('deleted_at', null);
+        const enrollmentRows: Record<string, any>[] = Array.isArray(enrollments) ? enrollments : [];
+        if (enrollmentRows.length === 0) return null;
+        const gIds = [...new Set(enrollmentRows.map((e) => e.group_id).filter(Boolean))];
+        if (gIds.length === 0) return null;
+        const [groupsRes, timesRes] = await Promise.all([
+          (client as any).from('groups').select('id, subject, teacher_name').in('id', gIds),
+          (client as any).from('group_times').select('group_id, start_time, end_time, weekday').in('group_id', gIds).eq('is_active', true),
+        ]);
+        const gMap = new Map<string, { subject?: string; teacher_name?: string }>();
+        const groupRows: Record<string, any>[] = Array.isArray(groupsRes.data) ? groupsRes.data : [];
+        for (const g of groupRows) {
+          gMap.set(g.id, { subject: g.subject, teacher_name: g.teacher_name });
+        }
+        const groupTimeMap = new Map<string, { start_time: string; end_time: string; weekday: number }[]>();
+        const timeRows: Record<string, any>[] = Array.isArray(timesRes.data) ? timesRes.data : [];
+        for (const t of timeRows) {
+          const arr = groupTimeMap.get(t.group_id) || [];
+          arr.push({ start_time: t.start_time, end_time: t.end_time, weekday: Number(t.weekday) });
+          groupTimeMap.set(t.group_id, arr);
+        }
+        return { enrollments: enrollmentRows, gMap, groupTimeMap };
+      };
+
+      const [attendanceRes, paymentsRes, gradesRes, groupMeta] = await Promise.all([
         client
           .from('attendance')
           .select('*')
@@ -214,11 +247,49 @@ export const studentAggregate = {
           .order('assessment_date', { ascending: false })
           .order('created_at', { ascending: false })
           .limit(500),
+        fetchGroupMap(),
       ]);
 
-      const attendance: AttendanceRecord[] = Array.isArray(attendanceRes.data)
-        ? attendanceRes.data.map(mapAttendanceRow)
-        : [];
+      // Enrich attendance with group info (subject, lecturer, time) when missing
+      let attendance: AttendanceRecord[] = [];
+      if (Array.isArray(attendanceRes.data)) {
+        const fallbackSubject = group?.subject;
+        const fallbackLecturer = group?.teacherName;
+        const groupMap = groupMeta?.gMap;
+        const groupTimeMap = groupMeta?.groupTimeMap;
+        const enrollments = groupMeta?.enrollments;
+        const enrollmentGroupId = (enrollmentId: string) => {
+          if (!enrollments) return undefined;
+          const e = enrollments.find((x: any) => x.id === enrollmentId);
+          return e?.group_id;
+        };
+        const matchTime = (dateStr: string, gId?: string) => {
+          if (!groupTimeMap || !gId) return undefined;
+          const slots = groupTimeMap.get(gId);
+          if (!slots || slots.length === 0) return undefined;
+          const d = new Date(dateStr + 'T12:00:00');
+          const wd = d.getDay();
+          const slot = slots.find((s) => s.weekday === wd) || slots[0];
+          return `${slot.start_time.slice(0, 5)} - ${slot.end_time.slice(0, 5)}`;
+        };
+
+        attendance = attendanceRes.data.map((row: Record<string, any>) => {
+          const rec = mapAttendanceRow(row);
+          const gId = enrollmentGroupId(row.enrollment_id);
+          if (!rec.subject) {
+            const groupInfo = gId && groupMap ? groupMap.get(gId) : undefined;
+            rec.subject = groupInfo?.subject || fallbackSubject;
+          }
+          if (!rec.lecturer) {
+            const groupInfo = gId && groupMap ? groupMap.get(gId) : undefined;
+            rec.lecturer = groupInfo?.teacher_name || fallbackLecturer;
+          }
+          if (!rec.time) {
+            rec.time = matchTime(rec.date, gId);
+          }
+          return rec;
+        });
+      }
 
       const payments: PaymentRecord[] = Array.isArray(paymentsRes.data)
         ? paymentsRes.data.map(mapPaymentRow)
@@ -329,35 +400,6 @@ export const studentAggregate = {
         max_score: result.maxScore,
         assessment_date: new Date().toISOString(),
         tenant_id: portalTenantId,
-      });
-
-      if (error) return { success: false, error: error.message };
-      return { success: true };
-    } catch (e: any) {
-      return { success: false, error: e.message };
-    }
-  },
-
-  async saveGrade(grade: GradeRecord, studentId: string): Promise<{ success: boolean; error?: string }> {
-    if (!isSupabaseConfigured()) return { success: true };
-
-    const client = getSupabaseClient();
-    if (!client) return { success: true };
-
-    try {
-      const { error } = await (client as any).from('grades').upsert({
-        id: grade.id,
-        student_id: studentId,
-        tenant_id: portalTenantId,
-        subject: grade.subject,
-        score: grade.score,
-        max_score: grade.maxScore,
-        percentage: grade.percentage,
-        letter_grade: grade.letterGrade || null,
-        assessment_date: grade.date,
-        type: grade.type || 'final',
-        passed: grade.passed ?? true,
-        remarks: grade.notes || null,
       });
 
       if (error) return { success: false, error: error.message };
