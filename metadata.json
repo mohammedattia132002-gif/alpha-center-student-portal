@@ -1,0 +1,6 @@
+{
+  "name": "Student Portal",
+  "description": "Alpha Center student portal connected to Supabase for attendance, payments, grades, join requests, and online exams.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
