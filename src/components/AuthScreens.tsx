@@ -115,7 +115,7 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
     return () => {
       cancelled = true;
     };
-  }, [view, groupsLoading]);
+  }, [view]);
 
   // When the stage changes, snap the grade back to a valid option for that stage.
   const handleStageChange = (nextStage: string) => {
