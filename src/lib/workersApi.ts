@@ -8,7 +8,7 @@ import {
   getPortalDataReadMeta,
   isSupabaseConfigured,
 } from '../supabaseClient';
-import { AttendanceRecord, Exam, GradeRecord, PaymentRecord, StudentProfile } from '../types';
+import { AttendanceRecord, Exam, GradeRecord, GroupTimeSlot, PaymentRecord, StudentProfile } from '../types';
 
 interface JoinRequestPayload {
   student_name: string;
@@ -129,6 +129,14 @@ export async function fetchGrades(studentId: string): Promise<GradeRecord[]> {
     saveToCache(`grades_${studentId}`, gradeRecords);
   }
   return gradeRecords;
+}
+
+export async function fetchGroupTimes(studentId: string): Promise<GroupTimeSlot[]> {
+  const records = await dbAdapter.getGroupTimes(studentId);
+  if (getPortalDataReadMeta('profile')?.source === 'live') {
+    saveToCache(`groupTimes_${studentId}`, records);
+  }
+  return records;
 }
 
 export async function fetchExams(student: StudentProfile): Promise<Exam[]> {

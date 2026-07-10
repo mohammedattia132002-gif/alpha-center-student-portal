@@ -1,4 +1,4 @@
-﻿﻿/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.5
  */
@@ -17,13 +17,15 @@ import {
   GradeRecord, 
   NotificationItem,
   CenterConfig,
-  Exam
+  Exam,
+  GroupTimeSlot
 } from './types';
 import {
   fetchAttendance as apiFetchAttendance,
   fetchPayments as apiFetchPayments,
   fetchGrades as apiFetchGrades,
   fetchExams as apiFetchExams,
+  fetchGroupTimes as apiFetchGroupTimes,
   fetchCenterBySubdomain,
   saveToCache,
   clearAuthData,
@@ -229,6 +231,8 @@ function StudentPortalApp() {
 
   const [exams, setExams] = useState<Exam[]>(() => []);
 
+const [groupTimes, setGroupTimes] = useState<GroupTimeSlot[]>(() => []);
+
   // Notifications systems states
   const [showNotifications, setShowNotifications] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null)
@@ -306,13 +310,15 @@ function StudentPortalApp() {
         setFetchError(null);
         try {
           const sid = currentStudent.id;
-          const [liveAttendance, livePayments, liveGrades, liveExams] = await Promise.all([
+          const [liveAttendance, livePayments, liveGrades, liveExams, liveGroupTimes] = await Promise.all([
             apiFetchAttendance(sid),
             apiFetchPayments(sid),
             apiFetchGrades(sid),
             apiFetchExams(currentStudent),
+            apiFetchGroupTimes(sid),
           ]);
           if (liveAttendance) setAttendance(liveAttendance);
+          if (liveGroupTimes) setGroupTimes(liveGroupTimes);
           if (livePayments) {
             setPayments(livePayments);
             const actualUnpaidSum = livePayments
@@ -429,6 +435,7 @@ function StudentPortalApp() {
             attendance={attendance} 
             payments={payments} 
             grades={grades} 
+            groupTimes={groupTimes}
             onNavigate={(tab) => changeTabWithHaptic(tab)}
             centerConfig={centerConfig}
             isLoading={isLoading}

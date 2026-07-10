@@ -120,6 +120,15 @@ export interface ExamAttempt {
   answers: Record<string, string>; // questionId -> optionId
 }
 
+export interface GroupTimeSlot {
+  id: string;
+  weekday: number; // 0=Sunday, 1=Monday, ..., 6=Saturday
+  startTime: string;
+  endTime: string;
+  room: string;
+  teacherName: string;
+}
+
 // Compatibility aliases for legacy component imports
 export type Student = StudentProfile;
 export type Grade = GradeRecord;

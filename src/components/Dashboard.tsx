@@ -9,11 +9,16 @@ import type {
   AttendanceRecord,
   PaymentRecord,
   GradeRecord,
-  CenterConfig
+  CenterConfig,
+  GroupTimeSlot
 } from '../types';
 import {
   AlertCircle,
-  Activity
+  Activity,
+  Clock,
+  MapPin,
+  GraduationCap,
+  Calendar
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getGreeting, GreetingResult } from '../lib/getGreeting';
@@ -26,13 +31,16 @@ interface DashboardProps {
   attendance: AttendanceRecord[];
   payments: PaymentRecord[];
   grades: GradeRecord[];
+  groupTimes: GroupTimeSlot[];
   onNavigate: (tab: string) => void;
   centerConfig: CenterConfig;
   isLoading?: boolean;
   fetchError?: string | null;
 }
 
-export default function Dashboard({ profile, attendance, grades, onNavigate, isLoading, fetchError }: DashboardProps) {
+const daysOfWeekLabels = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
+
+export default function Dashboard({ profile, attendance, grades, groupTimes, onNavigate, isLoading, fetchError }: DashboardProps) {
   const lastAttendance = attendance.slice(0, 3)
 
   const stats = useStudentStats(attendance, grades)
@@ -81,7 +89,7 @@ export default function Dashboard({ profile, attendance, grades, onNavigate, isL
   return (
     <div className="space-y-6 lg:space-y-8 text-right md:px-2 animate-in fade-in duration-500" id="mobile-home-dashboard">
       
-      {/* 1. EMOTIONAL WELCOME */}
+{/* 1. EMOTIONAL WELCOME */}
       <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-900 dark:from-indigo-950 dark:via-slate-900 dark:to-slate-955 rounded-3xl p-6 text-white relative overflow-hidden border border-white/5 dark:border-white/5 shadow-xl shadow-indigo-950/10">
         {/* Glow orbs background decoration */}
         <div className="absolute top-0 right-0 w-44 h-44 bg-indigo-400/20 dark:bg-indigo-505/20 rounded-full blur-3xl pointer-events-none" />
@@ -120,6 +128,54 @@ export default function Dashboard({ profile, attendance, grades, onNavigate, isL
           </div>
 
         </div>
+      </div>
+
+      {/* 2. GROUP SCHEDULE CARD */}
+      <div className="bg-bg-card backdrop-blur-md border border-border-card p-5 rounded-3xl shadow-[0_4px_18px_rgba(15,23,42,0.02)] relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-24 h-24 bg-gradient-to-br from-indigo-500/5 to-transparent rounded-full blur-xl" />
+        <div className="flex items-center gap-2 border-b border-gray-100/60 dark:border-slate-850/50 pb-3 mb-4">
+          <Calendar className="w-5 h-5 text-indigo-500" />
+          <div className="text-right flex-1">
+            <h3 className="text-xs font-black text-text-primary">مواعيد المجموعة</h3>
+            <span className="text-[10px] text-text-muted block font-sans">{profile.department}</span>
+          </div>
+        </div>
+
+        {groupTimes.length === 0 ? (
+          <div className="py-4 text-center">
+            <Clock className="w-8 h-8 text-neutral-300 dark:text-slate-700 mx-auto mb-2" />
+            <p className="text-xs text-text-muted font-sans">لم يتم تحديد مواعيد للمجموعة بعد</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {groupTimes.map((slot) => (
+              <div key={slot.id} className="p-3.5 bg-neutral-50/60 dark:bg-slate-950/40 rounded-2xl border border-border-card hover:bg-neutral-100/50 dark:hover:bg-slate-900/55 transition-all duration-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                  <span className="text-xs font-black text-text-primary">{daysOfWeekLabels[slot.weekday] || 'غير محدد'}</span>
+                </div>
+                <div className="space-y-1.5 pr-3.5">
+                  <div className="flex items-center gap-1.5 text-[10px] text-text-muted font-sans">
+                    <Clock className="w-3 h-3" />
+                    <span>{slot.startTime} - {slot.endTime}</span>
+                  </div>
+                  {slot.room && (
+                    <div className="flex items-center gap-1.5 text-[10px] text-text-muted font-sans">
+                      <MapPin className="w-3 h-3" />
+                      <span>{slot.room}</span>
+                    </div>
+                  )}
+                  {slot.teacherName && (
+                    <div className="flex items-center gap-1.5 text-[10px] text-text-muted font-sans">
+                      <GraduationCap className="w-3 h-3 text-indigo-400" />
+                      <span>{slot.teacherName}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">

@@ -4,7 +4,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { StudentProfile, AttendanceRecord, PaymentRecord, GradeRecord, Exam, ExamAttempt, ExamQuestion, AttendanceStatus } from './types';
+import { StudentProfile, AttendanceRecord, PaymentRecord, GradeRecord, Exam, ExamAttempt, ExamQuestion, AttendanceStatus, GroupTimeSlot } from './types';
 
 // Read configuration gracefully from import.meta.env
 const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || '';
@@ -641,10 +641,13 @@ export const dbAdapter = {
     }
   },
 
-  // Read the real active groups defined on the desktop so the join-request form
+// Read the real active groups defined on the desktop so the join-request form
   // offers actual center groups instead of hardcoded placeholders.
+  // Falls back to snapshot fallback data when Supabase has no results.
   async getActiveGroups(): Promise<Array<{ id: string; name: string; gradeLevel: string }>> {
-    if (!isSupabaseConfigured()) return [];
+    if (!isSupabaseConfigured()) {
+      return this.getGroupSnapshots();
+    }
 
     const client = getSupabase();
     try {
@@ -656,17 +659,68 @@ export const dbAdapter = {
         .is('deleted_at', null)
         .order('name', { ascending: true });
 
-      if (error || !Array.isArray(data)) return [];
-
-      return data
-        .map((row: any) => ({
-          id: String(row?.id || ''),
-          name: String(row?.name || '').trim(),
-          gradeLevel: String(row?.grade_level || '').trim(),
-        }))
-        .filter((group) => group.id && group.name);
+      if (!error && Array.isArray(data) && data.length > 0) {
+        return data
+          .map((row: any) => ({
+            id: String(row?.id || ''),
+            name: String(row?.name || '').trim(),
+            gradeLevel: String(row?.grade_level || '').trim(),
+          }))
+          .filter((group) => group.id && group.name);
+      }
     } catch (e) {
       console.error('Supabase groups fetch error:', e);
+    }
+
+    return this.getGroupSnapshots();
+  },
+
+  // Fallback: extract unique groups from student snapshots
+  getGroupSnapshots(): Array<{ id: string; name: string; gradeLevel: string }> {
+    try {
+      const raw = localStorage.getItem('portal_cache_profile');
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as { data?: { department?: string } };
+      const department = parsed?.data?.department;
+      if (department) {
+        return [{ id: 'snapshot-group', name: department, gradeLevel: '' }];
+      }
+    } catch {}
+    return [];
+  },
+
+// Load group schedule times for the student's group
+  async getGroupTimes(studentId: string): Promise<GroupTimeSlot[]> {
+    if (!isSupabaseConfigured()) return [];
+
+    const client = getSupabase();
+    try {
+      const groupSummary = await resolveStudentGroupSummary(client, studentId);
+      const groupId = safeUuid(groupSummary?.id);
+      if (!groupId) return [];
+
+      const { data, error } = await client
+        .from('group_times')
+        .select('*')
+        .eq('tenant_id', PORTAL_TENANT_ID)
+        .eq('group_id', groupId)
+        .eq('is_active', true)
+        .is('deleted_at', null)
+        .order('weekday', { ascending: true })
+        .order('start_time', { ascending: true });
+
+      if (error || !Array.isArray(data)) return [];
+
+      return data.map((row: any) => ({
+        id: String(row.id),
+        weekday: Number(row.weekday),
+        startTime: formatTimeLabel(row.start_time),
+        endTime: formatTimeLabel(row.end_time),
+        room: String(row.room || '').trim(),
+        teacherName: String(row.teacher_name || '').trim(),
+      }));
+    } catch (e) {
+      console.error('Supabase group times fetch error:', e);
       return [];
     }
   },

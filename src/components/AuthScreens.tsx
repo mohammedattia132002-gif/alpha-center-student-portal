@@ -76,6 +76,7 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
   // Real center groups pulled from the desktop-synced `groups` table.
   const [centerGroups, setCenterGroups] = useState<PortalGroupOption[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(false);
+  const [groupsFetchError, setGroupsFetchError] = useState(false);
 
   const [isSubmittingJoin, setIsSubmittingJoin] = useState(false);
   const [joinSuccessMsg, setJoinSuccessMsg] = useState('');
@@ -94,23 +95,27 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
     [centerGroups, grade],
   );
 
-  // Load the real groups once the join view is opened.
+  // Load the real groups once the join view is opened or when a fetch failure occurred.
   useEffect(() => {
-    if (view !== 'join' || centerGroups.length > 0 || groupsLoading) return;
+    if (view !== 'join' || groupsLoading) return;
     let cancelled = false;
     setGroupsLoading(true);
+    setGroupsFetchError(false);
     fetchActiveGroups()
       .then((groups) => {
         if (!cancelled) setCenterGroups(groups);
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.error('fetchActiveGroups failed:', err);
+        if (!cancelled) setGroupsFetchError(true);
+      })
       .finally(() => {
         if (!cancelled) setGroupsLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [view, centerGroups.length, groupsLoading]);
+  }, [view, groupsLoading]);
 
   // When the stage changes, snap the grade back to a valid option for that stage.
   const handleStageChange = (nextStage: string) => {
