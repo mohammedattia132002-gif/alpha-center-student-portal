@@ -93,7 +93,7 @@ function normalizeCenterConfig(config: CenterConfig): CenterConfig {
   };
 }
 
-const PORTAL_DATA_READ_KEYS: PortalDataReadKey[] = ['attendance', 'payments', 'grades', 'exams'];
+const PORTAL_DATA_READ_KEYS: PortalDataReadKey[] = ['attendance', 'payments', 'grades', 'exams', 'groupTimes'];
 
 function dominantPortalDataSource(sources: PortalDataSource[]): PortalDataSource {
   if (sources.includes('snapshot')) return 'snapshot';

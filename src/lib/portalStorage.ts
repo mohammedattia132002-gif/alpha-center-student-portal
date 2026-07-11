@@ -63,6 +63,24 @@ export function persistStudentSession(student: StudentProfile): void {
 
 export function clearStoredStudent(): void {
   try {
+    const student = getStoredStudent();
+    if (student) {
+      const encodedId = studentStorageId(student);
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < window.localStorage.length; i += 1) {
+        const key = window.localStorage.key(i);
+        if (!key) continue;
+        if (key.startsWith(`${SCOPED_PREFIX}_${encodedId}_`)) {
+          keysToRemove.push(key);
+        }
+        if (key.startsWith('portal_cache_') && key.includes(encodedId)) {
+          keysToRemove.push(key);
+        }
+      }
+      for (const key of keysToRemove) {
+        window.localStorage.removeItem(key);
+      }
+    }
     window.localStorage.removeItem(CURRENT_STUDENT_KEY);
     window.sessionStorage.removeItem(CURRENT_STUDENT_KEY);
   } catch {

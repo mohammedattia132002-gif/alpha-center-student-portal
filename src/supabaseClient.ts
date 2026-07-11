@@ -5,6 +5,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { StudentProfile, AttendanceRecord, PaymentRecord, GradeRecord, Exam, ExamAttempt, ExamQuestion, AttendanceStatus, GroupTimeSlot } from './types';
+import { fetchAllRows } from './lib/supabasePagination';
 
 // Read configuration gracefully from import.meta.env
 const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || '';
@@ -24,10 +25,11 @@ type SnapshotEntry = {
   attendance?: any[];
   payments?: any[];
   grades?: any[];
+  groupTimes?: any[];
 };
 
 type StudentSnapshotsMap = Record<string, SnapshotEntry>;
-export type PortalDataReadKey = 'profile' | 'attendance' | 'payments' | 'grades' | 'exams';
+export type PortalDataReadKey = 'profile' | 'attendance' | 'payments' | 'grades' | 'exams' | 'groupTimes';
 export type PortalDataReadSource = 'live' | 'cache' | 'snapshot';
 
 export interface PortalDataReadMeta {
@@ -467,10 +469,10 @@ async function buildStudentProfile(client: any, studentRow: Record<string, any>)
   const groupName = await resolveGroupName(client, studentRow);
   return {
     id: String(studentRow.id || ''),
-    name: String(studentRow.name || 'ط·ط§ظ„ط¨'),
+    name: String(studentRow.name || 'طالب'),
     avatar: String(studentRow.photo_url || '').trim() || DEFAULT_AVATAR,
     department: groupName,
-    academicYear: String(studentRow.grade_level || 'ط؛ظٹط± ظ…ط­ط¯ط¯'),
+    academicYear: String(studentRow.grade_level || 'غير محدد'),
     gpa: 0,
     totalCredits: 0,
     unpaidFees: outstandingBalanceFromStudent(studentRow),
@@ -500,7 +502,7 @@ export const dbAdapter = {
           name: String(s.student_name || 'طالب'),
           avatar: DEFAULT_AVATAR,
           department: String(s.group_name || 'المجموعة الأكاديمية').trim() || 'المجموعة الأكاديمية',
-          academicYear: String(s.grade || 'غير حدد'),
+          academicYear: String(s.grade || 'غير محدد'),
           gpa: 0,
           totalCredits: 0,
           unpaidFees: 0,
@@ -691,38 +693,63 @@ export const dbAdapter = {
 
 // Load group schedule times for the student's group
   async getGroupTimes(studentId: string): Promise<GroupTimeSlot[]> {
-    if (!isSupabaseConfigured()) return [];
+    let supabaseRecords: GroupTimeSlot[] = [];
 
-    const client = getSupabase();
-    try {
-      const groupSummary = await resolveStudentGroupSummary(client, studentId);
-      const groupId = safeUuid(groupSummary?.id);
-      if (!groupId) return [];
+    if (isSupabaseConfigured()) {
+      const client = getSupabase();
+      try {
+        const groupSummary = await resolveStudentGroupSummary(client, studentId);
+        const groupId = safeUuid(groupSummary?.id);
+        if (groupId) {
+          const data = await fetchAllRows(client, 'group_times', (query) => query
+            .eq('tenant_id', PORTAL_TENANT_ID)
+            .eq('group_id', groupId)
+            .eq('is_active', true)
+            .is('deleted_at', null)
+            .order('weekday', { ascending: true })
+            .order('start_time', { ascending: true }));
 
-      const { data, error } = await client
-        .from('group_times')
-        .select('*')
-        .eq('tenant_id', PORTAL_TENANT_ID)
-        .eq('group_id', groupId)
-        .eq('is_active', true)
-        .is('deleted_at', null)
-        .order('weekday', { ascending: true })
-        .order('start_time', { ascending: true });
+          if (Array.isArray(data)) {
+            supabaseRecords = data.map((row: any) => ({
+              id: String(row.id),
+              weekday: Number(row.weekday),
+              startTime: formatTimeLabel(row.start_time),
+              endTime: formatTimeLabel(row.end_time),
+              room: String(row.room || '').trim(),
+              teacherName: String(row.teacher_name || '').trim(),
+            }));
+          }
+        }
+      } catch (e) {
+        console.error('Supabase group times fetch error:', e);
+      }
+    }
 
-      if (error || !Array.isArray(data)) return [];
-
-      return data.map((row: any) => ({
+    let snapshotRecords: GroupTimeSlot[] = [];
+    const snapshotEntry = await getStudentSnapshotEntry(studentId);
+    if (snapshotEntry && Array.isArray(snapshotEntry.groupTimes)) {
+      snapshotRecords = snapshotEntry.groupTimes.map((row: any) => ({
         id: String(row.id),
         weekday: Number(row.weekday),
-        startTime: formatTimeLabel(row.start_time),
-        endTime: formatTimeLabel(row.end_time),
+        startTime: formatTimeLabel(row.start_time || row.startTime),
+        endTime: formatTimeLabel(row.end_time || row.endTime),
         room: String(row.room || '').trim(),
-        teacherName: String(row.teacher_name || '').trim(),
+        teacherName: String(row.teacher_name || row.teacherName || '').trim(),
       }));
-    } catch (e) {
-      console.error('Supabase group times fetch error:', e);
-      return [];
     }
+
+    const mergedMap = new Map<string, GroupTimeSlot>();
+    snapshotRecords.forEach((rec) => mergedMap.set(rec.id, rec));
+    supabaseRecords.forEach((rec) => mergedMap.set(rec.id, rec));
+
+    const finalRecords = Array.from(mergedMap.values());
+    if (finalRecords.length > 0) {
+      recordPortalDataRead('groupTimes', !isSupabaseConfigured() ? 'snapshot' : 'live');
+      return finalRecords.sort((a, b) => a.weekday - b.weekday || a.startTime.localeCompare(b.startTime));
+    }
+
+    recordPortalDataRead('groupTimes', isSupabaseConfigured() ? 'live' : 'snapshot');
+    return [];
   },
 
   // Insert Join Request
@@ -777,17 +804,14 @@ export const dbAdapter = {
     if (isSupabaseConfigured()) {
       const client = getSupabase();
       try {
-        const { data, error } = await client
-          .from('attendance')
-          .select('*')
+        const data = await fetchAllRows(client, 'attendance', (query) => query
           .eq('tenant_id', PORTAL_TENANT_ID)
           .eq('student_id', studentId)
           .is('deleted_at', null)
           .order('date', { ascending: false })
-          .order('recorded_at', { ascending: false })
-          .limit(1000);
+          .order('recorded_at', { ascending: false }));
 
-        if (!error && Array.isArray(data)) {
+        if (Array.isArray(data)) {
           const legacySessionIds = Array.from(
             new Set(data.map((row: any) => safeUuid(row?.session_id)).filter((value): value is string => Boolean(value))),
           );
@@ -897,16 +921,13 @@ export const dbAdapter = {
     if (isSupabaseConfigured()) {
       const client = getSupabase();
       try {
-        const [{ data, error }, { data: studentRow }] = await Promise.all([
-          client
-            .from('payments')
-            .select('*')
+        const [data, { data: studentRow }] = await Promise.all([
+          fetchAllRows(client, 'payments', (query) => query
             .eq('tenant_id', PORTAL_TENANT_ID)
             .eq('student_id', studentId)
             .is('deleted_at', null)
             .order('paid_at', { ascending: false })
-            .order('created_at', { ascending: false })
-            .limit(1000),
+            .order('created_at', { ascending: false })),
           client
             .from('students')
             .select('id,student_code,balance')
@@ -923,7 +944,7 @@ export const dbAdapter = {
           }
         }
 
-        if (!error && Array.isArray(data)) {
+        if (Array.isArray(data)) {
           const paymentRows: PaymentRecord[] = data.map((row: any) => ({
             id: String(row.id),
             title: String(row.notes || row.method || 'دفعة مالية').trim(),
@@ -937,17 +958,15 @@ export const dbAdapter = {
           let rows = paymentRows;
 
           try {
-            const { data: ledgerRows, error: ledgerError } = await client
-              .from('financial_ledger')
-              .select('id,student_id,payment_id,reference_id,reference_type,entry_type,account_code,amount,currency,created_at,deleted_at,transaction_id')
+            const ledgerRows = await fetchAllRows(client, 'financial_ledger', (query) => query
               .eq('tenant_id', PORTAL_TENANT_ID)
               .eq('student_id', studentId)
               .eq('reference_type', 'payment')
               .eq('entry_type', 'debit')
               .is('deleted_at', null)
-              .order('created_at', { ascending: false });
+              .order('created_at', { ascending: false }));
 
-            if (!ledgerError && Array.isArray(ledgerRows) && ledgerRows.length > 0) {
+            if (Array.isArray(ledgerRows) && ledgerRows.length > 0) {
               const knownPayments = new Map(data.map((row: any) => [String(row.id), row]));
               const missingPaymentIds = Array.from(
                 new Set(
@@ -1050,17 +1069,14 @@ export const dbAdapter = {
     if (isSupabaseConfigured()) {
       const client = getSupabase();
       try {
-        const { data, error } = await client
-          .from('grades')
-          .select('*')
+        const data = await fetchAllRows(client, 'grades', (query) => query
           .eq('tenant_id', PORTAL_TENANT_ID)
           .eq('student_id', studentId)
           .is('deleted_at', null)
           .order('assessment_date', { ascending: false })
-          .order('created_at', { ascending: false })
-          .limit(1000);
+          .order('created_at', { ascending: false }));
 
-        if (!error && Array.isArray(data)) {
+        if (Array.isArray(data)) {
           supabaseRecords = data.map((row: any) => ({
             id: String(row.id),
             subjectCode: String(row.assessment_id || row.id || '').slice(0, 12).toUpperCase(),
@@ -1306,15 +1322,13 @@ export const dbAdapter = {
     if (isSupabaseConfigured()) {
       const client = getSupabase();
       try {
-        const { data: platformExamRows, error: platformExamsError } = await client
-          .from('platform_exams')
-          .select('*')
+        const platformExamRows = await fetchAllRows(client, 'platform_exams', (query) => query
           .eq('tenant_id', PORTAL_TENANT_ID)
           .eq('active', true)
           .is('deleted_at', null)
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false }));
 
-        if (!platformExamsError && Array.isArray(platformExamRows) && platformExamRows.length > 0) {
+        if (Array.isArray(platformExamRows) && platformExamRows.length > 0) {
           const groupSummary = student?.id ? await resolveStudentGroupSummary(client, student.id) : null;
           const visibleExamRows = platformExamRows.filter((exam: any) =>
             examMatchesStudentAudience(exam, student, groupSummary),
@@ -1350,28 +1364,24 @@ export const dbAdapter = {
 
           const platformExams = await Promise.all(
             visibleExamRows.map(async (exam: any) => {
-              const { data: platformQuestionRows, error: platformQuestionsError } = await client
-                .from('platform_questions')
-                .select('id,exam_id,question_text,points,order_index,question_type,page_number')
+              const platformQuestionRows = await fetchAllRows(client, 'platform_questions', (query) => query
                 .eq('exam_id', exam.id)
                 .is('deleted_at', null)
-                .order('order_index', { ascending: true });
+                .order('order_index', { ascending: true }));
 
-              if (platformQuestionsError || !Array.isArray(platformQuestionRows)) {
-                throw platformQuestionsError || new Error('platform_questions_invalid_response');
+              if (!Array.isArray(platformQuestionRows)) {
+                throw new Error('platform_questions_invalid_response');
               }
 
               const questions: ExamQuestion[] = await Promise.all(
                 platformQuestionRows.map(async (question: any) => {
-                  const { data: platformChoiceRows, error: platformChoicesError } = await client
-                    .from('platform_choices')
-                    .select('id,question_id,choice_text,order_index')
+                  const platformChoiceRows = await fetchAllRows(client, 'platform_choices', (query) => query
                     .eq('question_id', question.id)
                     .is('deleted_at', null)
-                    .order('order_index', { ascending: true });
+                    .order('order_index', { ascending: true }));
 
-                  if (platformChoicesError || !Array.isArray(platformChoiceRows)) {
-                    throw platformChoicesError || new Error('platform_choices_invalid_response');
+                  if (!Array.isArray(platformChoiceRows)) {
+                    throw new Error('platform_choices_invalid_response');
                   }
 
                   const choices = platformChoiceRows.map((choice: any) => ({

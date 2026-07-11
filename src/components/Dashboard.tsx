@@ -38,9 +38,10 @@ interface DashboardProps {
   fetchError?: string | null;
 }
 
-const daysOfWeekLabels = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
+const daysOfWeekLabels = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
 export default function Dashboard({ profile, attendance, grades, groupTimes, onNavigate, isLoading, fetchError }: DashboardProps) {
+  const hasExistingData = attendance.length > 0 || grades.length > 0 || groupTimes.length > 0;
   const lastAttendance = attendance.slice(0, 3)
 
   const stats = useStudentStats(attendance, grades)
@@ -56,7 +57,7 @@ export default function Dashboard({ profile, attendance, grades, groupTimes, onN
 
   const playHapticTip = () => playPortalTap(800);
 
-  if (isLoading) {
+  if (isLoading && !hasExistingData) {
     return (
       <div className="space-y-6 text-right md:px-2 animate-in fade-in duration-500" id="mobile-home-dashboard">
         <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-900 dark:from-indigo-950 dark:via-slate-900 dark:to-slate-955 rounded-3xl p-6 text-white relative overflow-hidden border border-white/5 dark:border-white/5 shadow-xl shadow-indigo-950/10 animate-pulse">
@@ -89,6 +90,20 @@ export default function Dashboard({ profile, attendance, grades, groupTimes, onN
   return (
     <div className="space-y-6 lg:space-y-8 text-right md:px-2 animate-in fade-in duration-500" id="mobile-home-dashboard">
       
+      {isLoading && hasExistingData && (
+        <div
+          className="flex items-center gap-2 p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-xs text-right mb-2"
+          role="status"
+          aria-live="polite"
+        >
+          <svg className="w-4 h-4 animate-spin shrink-0" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <span>جارٍ تحديث البيانات...</span>
+        </div>
+      )}
+
 {/* 1. EMOTIONAL WELCOME */}
       <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-900 dark:from-indigo-950 dark:via-slate-900 dark:to-slate-955 rounded-3xl p-6 text-white relative overflow-hidden border border-white/5 dark:border-white/5 shadow-xl shadow-indigo-950/10">
         {/* Glow orbs background decoration */}

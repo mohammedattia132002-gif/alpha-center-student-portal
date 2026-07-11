@@ -535,6 +535,31 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
                   {/* Academic Group */}
                   <div className="space-y-1 text-right">
                     <label htmlFor="join-academic-group" className="text-[11px] font-bold text-neutral-500 dark:text-slate-405">المجموعة التعليمية</label>
+
+                    {groupsFetchError && (
+                      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-[10px] mb-1">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span className="flex-1">تعذر تحميل قائمة المجموعات. يرجى التحقق من الاتصال.</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setGroupsLoading(true);
+                            setGroupsFetchError(false);
+                            fetchActiveGroups()
+                              .then((groups) => setCenterGroups(groups))
+                              .catch((err) => {
+                                console.error('fetchActiveGroups failed:', err);
+                                setGroupsFetchError(true);
+                              })
+                              .finally(() => setGroupsLoading(false));
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 font-bold transition-colors cursor-pointer"
+                        >
+                          إعادة المحاولة
+                        </button>
+                      </div>
+                    )}
+
                     <div className="relative">
                       <select
                         id="join-academic-group"
@@ -546,9 +571,11 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
                         <option value="" className="bg-white dark:bg-slate-900">
                           {groupsLoading
                             ? 'جارٍ تحميل المجموعات...'
-                            : filteredGroups.length === 0
-                              ? 'لا توجد مجموعات متاحة — سيحددها السنتر'
-                              : 'اختر المجموعة المناسبة'}
+                            : groupsFetchError
+                              ? 'تعذر تحميل المجموعات'
+                              : filteredGroups.length === 0
+                                ? 'لا توجد مجموعات متاحة — سيحددها السنتر'
+                                : 'اختر المجموعة المناسبة'}
                         </option>
                         {filteredGroups.map((group) => (
                           <option key={group.id} value={group.name} className="bg-white dark:bg-slate-900">{group.name}</option>

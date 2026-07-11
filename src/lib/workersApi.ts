@@ -133,7 +133,7 @@ export async function fetchGrades(studentId: string): Promise<GradeRecord[]> {
 
 export async function fetchGroupTimes(studentId: string): Promise<GroupTimeSlot[]> {
   const records = await dbAdapter.getGroupTimes(studentId);
-  if (getPortalDataReadMeta('profile')?.source === 'live') {
+  if (getPortalDataReadMeta('groupTimes')?.source === 'live') {
     saveToCache(`groupTimes_${studentId}`, records);
   }
   return records;
