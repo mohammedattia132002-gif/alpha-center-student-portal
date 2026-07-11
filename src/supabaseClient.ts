@@ -31,6 +31,25 @@ type SnapshotEntry = {
 type StudentSnapshotsMap = Record<string, SnapshotEntry>;
 export type PortalDataReadKey = 'profile' | 'attendance' | 'payments' | 'grades' | 'exams' | 'groupTimes';
 export type PortalDataReadSource = 'live' | 'cache' | 'snapshot';
+export type PortalJoinFieldKey =
+  | 'student_name'
+  | 'parent_phone'
+  | 'student_phone'
+  | 'academic_stage'
+  | 'grade'
+  | 'academic_group'
+  | 'gender';
+
+export type PortalJoinFieldConfig = {
+  visible: boolean;
+  required: boolean;
+};
+
+export type PortalJoinSettings = {
+  fields: Record<PortalJoinFieldKey, PortalJoinFieldConfig>;
+  stages: Record<string, boolean>;
+  grades: Record<string, boolean>;
+};
 
 export interface PortalDataReadMeta {
   at: number;
@@ -51,6 +70,57 @@ interface SavedExamResult {
 
 const lastPortalDataReads: Partial<Record<PortalDataReadKey, PortalDataReadMeta>> = {};
 let studentSnapshotsPromise: Promise<StudentSnapshotsMap> | null = null;
+
+export const DEFAULT_PORTAL_JOIN_SETTINGS: PortalJoinSettings = {
+  fields: {
+    student_name: { visible: true, required: true },
+    parent_phone: { visible: true, required: true },
+    student_phone: { visible: true, required: false },
+    academic_stage: { visible: true, required: true },
+    grade: { visible: true, required: true },
+    academic_group: { visible: true, required: false },
+    gender: { visible: true, required: false },
+  },
+  stages: {},
+  grades: {},
+};
+
+const PORTAL_JOIN_FIELD_KEYS = Object.keys(DEFAULT_PORTAL_JOIN_SETTINGS.fields) as PortalJoinFieldKey[];
+
+function normalizePortalJoinSettings(value: unknown): PortalJoinSettings {
+  const parsed = typeof value === 'string' && value.trim() ? JSON.parse(value) : value;
+  const record = parsed && typeof parsed === 'object' ? parsed as Partial<PortalJoinSettings> : {};
+  const fields = { ...DEFAULT_PORTAL_JOIN_SETTINGS.fields };
+  const stages: Record<string, boolean> = {};
+  const grades: Record<string, boolean> = {};
+
+  for (const key of PORTAL_JOIN_FIELD_KEYS) {
+    const fallback = DEFAULT_PORTAL_JOIN_SETTINGS.fields[key];
+    const row = record.fields?.[key];
+    const field = row && typeof row === 'object' ? row as Partial<PortalJoinFieldConfig> : {};
+    const visible = typeof field.visible === 'boolean' ? field.visible : fallback.visible;
+    const required = visible && (typeof field.required === 'boolean' ? field.required : fallback.required);
+    fields[key] = { visible, required };
+  }
+
+  if (record.stages && typeof record.stages === 'object') {
+    for (const [stage, visible] of Object.entries(record.stages)) {
+      if (typeof visible === 'boolean') {
+        stages[stage] = visible;
+      }
+    }
+  }
+
+  if (record.grades && typeof record.grades === 'object') {
+    for (const [grade, visible] of Object.entries(record.grades)) {
+      if (typeof visible === 'boolean') {
+        grades[grade] = visible;
+      }
+    }
+  }
+
+  return { fields, stages, grades };
+}
 
 function recordPortalDataRead(key: PortalDataReadKey, source: PortalDataReadSource): void {
   lastPortalDataReads[key] = {
@@ -653,13 +723,26 @@ export const dbAdapter = {
 
     const client = getSupabase();
     try {
-      const { data, error } = await client
-        .from('groups')
-        .select('id,name,grade_level,is_active')
-        .eq('tenant_id', PORTAL_TENANT_ID)
-        .eq('is_active', true)
-        .is('deleted_at', null)
-        .order('name', { ascending: true });
+      let { data, error } = await client
+          .from('groups')
+          .select('id,name,grade_level,is_active,portal_join_enabled')
+          .eq('tenant_id', PORTAL_TENANT_ID)
+          .eq('is_active', true)
+          .eq('portal_join_enabled', true)
+          .is('deleted_at', null)
+          .order('name', { ascending: true });
+
+      if (error && String(error.message || '').includes('portal_join_enabled')) {
+        const fallback = await client
+          .from('groups')
+          .select('id,name,grade_level,is_active')
+          .eq('tenant_id', PORTAL_TENANT_ID)
+          .eq('is_active', true)
+          .is('deleted_at', null)
+          .order('name', { ascending: true });
+        data = fallback.data;
+        error = fallback.error;
+      }
 
       if (!error && Array.isArray(data) && data.length > 0) {
         return data
@@ -675,6 +758,32 @@ export const dbAdapter = {
     }
 
     return this.getGroupSnapshots();
+  },
+
+  async getPortalJoinSettings(): Promise<PortalJoinSettings> {
+    if (!isSupabaseConfigured()) {
+      return DEFAULT_PORTAL_JOIN_SETTINGS;
+    }
+
+    const client = getSupabase();
+    try {
+      const { data, error } = await client
+        .from('app_settings')
+        .select('setting_value')
+        .eq('tenant_id', PORTAL_TENANT_ID)
+        .eq('setting_key', 'portal_join_config')
+        .is('deleted_at', null)
+        .maybeSingle();
+
+      if (error || !data) {
+        return DEFAULT_PORTAL_JOIN_SETTINGS;
+      }
+
+      return normalizePortalJoinSettings((data as any).setting_value);
+    } catch (error) {
+      console.error('Supabase portal join settings error:', error);
+      return DEFAULT_PORTAL_JOIN_SETTINGS;
+    }
   },
 
   // Fallback: extract unique groups from student snapshots

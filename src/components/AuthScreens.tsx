@@ -4,7 +4,15 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { loginStudent, submitJoinRequest, fetchActiveGroups, PortalGroupOption } from '../lib/workersApi';
+import {
+  loginStudent,
+  submitJoinRequest,
+  fetchActiveGroups,
+  fetchPortalJoinSettings,
+  PortalGroupOption,
+  PortalJoinFieldKey,
+  PortalJoinSettings,
+} from '../lib/workersApi';
 import { ArrowRight, CheckCircle2, AlertCircle, Sparkles, Phone, User, BookOpen, Layers, Users, Wifi } from 'lucide-react';
 import { StudentProfile, CenterConfig } from '../types';
 
@@ -37,6 +45,19 @@ const ACADEMIC_STAGES = Object.keys(GRADES_BY_STAGE);
 const DEFAULT_ACADEMIC_STAGE = 'المرحلة الثانوية';
 const DEFAULT_GRADE = GRADES_BY_STAGE[DEFAULT_ACADEMIC_STAGE][0];
 const DEFAULT_GENDER = 'ذكر';
+const DEFAULT_JOIN_SETTINGS: PortalJoinSettings = {
+  fields: {
+    student_name: { visible: true, required: true },
+    parent_phone: { visible: true, required: true },
+    student_phone: { visible: true, required: false },
+    academic_stage: { visible: true, required: true },
+    grade: { visible: true, required: true },
+    academic_group: { visible: true, required: false },
+    gender: { visible: true, required: false },
+  },
+  stages: {},
+  grades: {},
+};
 
 export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreensProps) {
   const [view, setView] = useState<'login' | 'join'>(getInitialAuthView);
@@ -72,6 +93,7 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
   const [grade, setGrade] = useState(DEFAULT_GRADE);
   const [academicGroup, setAcademicGroup] = useState('');
   const [gender, setGender] = useState(DEFAULT_GENDER);
+  const [joinSettings, setJoinSettings] = useState<PortalJoinSettings>(DEFAULT_JOIN_SETTINGS);
 
   // Real center groups pulled from the desktop-synced `groups` table.
   const [centerGroups, setCenterGroups] = useState<PortalGroupOption[]>([]);
@@ -82,11 +104,20 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
   const [joinSuccessMsg, setJoinSuccessMsg] = useState('');
   const [joinErrorMsg, setJoinErrorMsg] = useState('');
 
-  // Grades available for the currently selected stage.
-  const availableGrades = useMemo(
-    () => GRADES_BY_STAGE[academicStage] ?? GRADES_BY_STAGE[DEFAULT_ACADEMIC_STAGE],
-    [academicStage],
-  );
+  const joinField = (key: PortalJoinFieldKey) => joinSettings.fields[key] || DEFAULT_JOIN_SETTINGS.fields[key];
+  const showJoinField = (key: PortalJoinFieldKey) => joinField(key).visible;
+  const requireJoinField = (key: PortalJoinFieldKey) => joinField(key).visible && joinField(key).required;
+  const visibleStages = useMemo(() => {
+    const stages = ACADEMIC_STAGES.filter((stage) => joinSettings.stages?.[stage] !== false);
+    return stages.length > 0 ? stages : ACADEMIC_STAGES;
+  }, [joinSettings.stages]);
+
+  // Grades available for the currently selected stage after applying portal join controls.
+  const availableGrades = useMemo(() => {
+    const stageGrades = GRADES_BY_STAGE[academicStage] ?? GRADES_BY_STAGE[visibleStages[0]] ?? GRADES_BY_STAGE[DEFAULT_ACADEMIC_STAGE];
+    const grades = stageGrades.filter((gradeOption) => joinSettings.grades?.[gradeOption] !== false);
+    return grades.length > 0 ? grades : stageGrades;
+  }, [academicStage, joinSettings.grades, visibleStages]);
 
   // Groups filtered to the selected grade when the desktop tagged them with a grade_level;
   // groups without a grade level stay available for every stage.
@@ -101,13 +132,23 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
     let cancelled = false;
     setGroupsLoading(true);
     setGroupsFetchError(false);
-    fetchActiveGroups()
-      .then((groups) => {
-        if (!cancelled) setCenterGroups(groups);
-      })
-      .catch((err) => {
-        console.error('fetchActiveGroups failed:', err);
-        if (!cancelled) setGroupsFetchError(true);
+    Promise.allSettled([fetchActiveGroups(), fetchPortalJoinSettings()])
+      .then(([groupsResult, settingsResult]) => {
+        if (cancelled) return;
+
+        if (groupsResult.status === 'fulfilled') {
+          setCenterGroups(groupsResult.value);
+        } else {
+          console.error('fetchActiveGroups failed:', groupsResult.reason);
+          setGroupsFetchError(true);
+        }
+
+        if (settingsResult.status === 'fulfilled') {
+          setJoinSettings(settingsResult.value);
+        } else {
+          console.error('fetchPortalJoinSettings failed:', settingsResult.reason);
+          setJoinSettings(DEFAULT_JOIN_SETTINGS);
+        }
       })
       .finally(() => {
         if (!cancelled) setGroupsLoading(false);
@@ -120,11 +161,26 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
   // When the stage changes, snap the grade back to a valid option for that stage.
   const handleStageChange = (nextStage: string) => {
     setAcademicStage(nextStage);
-    const grades = GRADES_BY_STAGE[nextStage] ?? [];
+    const grades = (GRADES_BY_STAGE[nextStage] ?? []).filter((gradeOption) => joinSettings.grades?.[gradeOption] !== false);
     if (!grades.includes(grade)) {
       setGrade(grades[0] ?? '');
     }
   };
+
+  useEffect(() => {
+    if (!visibleStages.includes(academicStage)) {
+      const nextStage = visibleStages[0] ?? DEFAULT_ACADEMIC_STAGE;
+      setAcademicStage(nextStage);
+      const nextGrades = (GRADES_BY_STAGE[nextStage] ?? []).filter((gradeOption) => joinSettings.grades?.[gradeOption] !== false);
+      setGrade(nextGrades[0] ?? '');
+    }
+  }, [academicStage, joinSettings.grades, visibleStages]);
+
+  useEffect(() => {
+    if (!availableGrades.includes(grade)) {
+      setGrade(availableGrades[0] ?? '');
+    }
+  }, [availableGrades, grade]);
 
   // Keep the selected group valid as the grade filter changes.
   useEffect(() => {
@@ -132,6 +188,13 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
       setAcademicGroup('');
     }
   }, [filteredGroups, academicGroup]);
+
+  useEffect(() => {
+    if (!showJoinField('student_name') && studentName) setStudentName('');
+    if (!showJoinField('parent_phone') && parentPhone) setParentPhone('');
+    if (!showJoinField('student_phone') && studentPhone) setStudentPhone('');
+    if (!showJoinField('academic_group') && academicGroup) setAcademicGroup('');
+  }, [academicGroup, joinSettings, parentPhone, studentName, studentPhone]);
 
   const openView = (nextView: 'login' | 'join') => {
     setView(nextView);
@@ -165,7 +228,14 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
     setJoinSuccessMsg('');
     setJoinErrorMsg('');
 
-    if (!studentName.trim() || !parentPhone.trim()) {
+    if (
+      (requireJoinField('student_name') && !studentName.trim()) ||
+      (requireJoinField('parent_phone') && !parentPhone.trim()) ||
+      (requireJoinField('student_phone') && !studentPhone.trim()) ||
+      (requireJoinField('academic_stage') && !academicStage.trim()) ||
+      (requireJoinField('grade') && !grade.trim()) ||
+      (requireJoinField('academic_group') && !academicGroup.trim())
+    ) {
       setJoinErrorMsg('الرجاء إدخال اسم الطالب ورقم هاتف ولي الأمر (إلزامي)');
       return;
     }
@@ -174,13 +244,13 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
 
     try {
       const apiRes = await submitJoinRequest({
-        student_name: studentName,
-        phone: studentPhone || parentPhone,
-        parent_phone: parentPhone,
-        grade,
-        academic_stage: academicStage,
-        academic_group: academicGroup || 'غير محدد',
-        gender,
+        student_name: studentName || 'طالب جديد',
+        phone: showJoinField('student_phone') ? (studentPhone || parentPhone || 'غير محدد') : (parentPhone || studentPhone || 'غير محدد'),
+        parent_phone: showJoinField('parent_phone') ? (parentPhone || studentPhone || 'غير محدد') : (studentPhone || parentPhone || 'غير محدد'),
+        grade: showJoinField('grade') ? grade : 'غير محدد',
+        academic_stage: showJoinField('academic_stage') ? academicStage : 'غير محدد',
+        academic_group: showJoinField('academic_group') ? (academicGroup || 'غير محدد') : 'غير محدد',
+        gender: showJoinField('gender') ? gender : '',
       });
       if (apiRes.success) {
         setJoinSuccessMsg('تم تسجيل وإرسال طلب الانضمام بنجاح وسيتواصل معكم فريق القبول قريباً.');
@@ -435,14 +505,14 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
                 <div className="grid md:grid-cols-2 gap-4">
                   
                   {/* Student Name */}
-                  <div className="space-y-1 text-right">
+                  <div hidden={!showJoinField('student_name')} className="space-y-1 text-right">
                     <label htmlFor="join-student-name" className="text-[11px] font-bold text-text-secondary">اسم الطالب رباعي <span className="text-rose-500">*</span></label>
                     <div className="relative">
                       <input
                         id="join-student-name"
                         type="text"
                         name="student-name"
-                        required
+                        required={requireJoinField('student_name')}
                         value={studentName}
                         onChange={(e) => setStudentName(e.target.value)}
                         autoComplete="name"
@@ -456,14 +526,14 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
                   </div>
 
                   {/* Parent Phone */}
-                  <div className="space-y-1 text-right">
+                  <div hidden={!showJoinField('parent_phone')} className="space-y-1 text-right">
                     <label htmlFor="join-parent-phone" className="text-[11px] font-bold text-text-secondary">رقم ولي الأمر (إلزامي) <span className="text-rose-500">*</span></label>
                     <div className="relative">
                       <input
                         id="join-parent-phone"
                         type="tel"
                         name="parent-phone"
-                        required
+                        required={requireJoinField('parent_phone')}
                         value={parentPhone}
                         onChange={(e) => setParentPhone(e.target.value)}
                         autoComplete="tel"
@@ -478,13 +548,14 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
                   </div>
 
                   {/* Student Phone */}
-                  <div className="space-y-1 text-right">
+                  <div hidden={!showJoinField('student_phone')} className="space-y-1 text-right">
                     <label htmlFor="join-student-phone" className="text-[11px] font-bold text-text-secondary">رقم الطالب الأخصائي (اختياري)</label>
                     <div className="relative">
                       <input
                         id="join-student-phone"
                         type="tel"
                         name="student-phone"
+                        required={requireJoinField('student_phone')}
                         value={studentPhone}
                         onChange={(e) => setStudentPhone(e.target.value)}
                         autoComplete="tel"
@@ -497,16 +568,17 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
                   </div>
 
                   {/* Stage */}
-                  <div className="space-y-1 text-right">
+                  <div hidden={!showJoinField('academic_stage')} className="space-y-1 text-right">
                     <label htmlFor="join-academic-stage" className="text-[11px] font-bold text-text-secondary font-sans">المرحلة الدراسية</label>
                     <div className="relative">
                       <select
                         id="join-academic-stage"
+                        required={requireJoinField('academic_stage')}
                         value={academicStage}
                         onChange={(e) => handleStageChange(e.target.value)}
                         className="w-full h-10 pr-10 pl-3 rounded-xl bg-neutral-50 dark:bg-slate-950/60 text-text-primary border border-neutral-200 dark:border-slate-800/80 focus:border-indigo-505 transition-all text-xs appearance-none cursor-pointer"
                       >
-                        {ACADEMIC_STAGES.map((stage) => (
+                        {visibleStages.map((stage) => (
                           <option key={stage} value={stage} className="bg-white dark:bg-slate-900">{stage}</option>
                         ))}
                       </select>
@@ -515,11 +587,12 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
                   </div>
 
                   {/* Grade */}
-                  <div className="space-y-1 text-right">
+                  <div hidden={!showJoinField('grade')} className="space-y-1 text-right">
                     <label htmlFor="join-grade" className="text-[11px] font-bold text-neutral-500 dark:text-slate-405">الصف الدراسي</label>
                     <div className="relative">
                       <select
                         id="join-grade"
+                        required={requireJoinField('grade')}
                         value={grade}
                         onChange={(e) => setGrade(e.target.value)}
                         className="w-full h-10 pr-10 pl-3 rounded-xl bg-neutral-50 dark:bg-slate-950/60 text-slate-800 dark:text-slate-100 border border-neutral-200 dark:border-slate-800 focus:border-indigo-505 transition-all text-xs appearance-none cursor-pointer"
@@ -533,7 +606,7 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
                   </div>
 
                   {/* Academic Group */}
-                  <div className="space-y-1 text-right">
+                  <div hidden={!showJoinField('academic_group')} className="space-y-1 text-right">
                     <label htmlFor="join-academic-group" className="text-[11px] font-bold text-neutral-500 dark:text-slate-405">المجموعة التعليمية</label>
 
                     {groupsFetchError && (
@@ -563,6 +636,7 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
                     <div className="relative">
                       <select
                         id="join-academic-group"
+                        required={requireJoinField('academic_group')}
                         value={academicGroup}
                         onChange={(e) => setAcademicGroup(e.target.value)}
                         disabled={groupsLoading}
@@ -586,11 +660,12 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
                   </div>
 
                   {/* Gender selection */}
-                  <div className="space-y-1 text-right">
+                  <div hidden={!showJoinField('gender')} className="space-y-1 text-right">
                     <label htmlFor="join-gender" className="text-[11px] font-bold text-neutral-500 dark:text-slate-450">الجنس</label>
                     <div className="relative">
                       <select
                         id="join-gender"
+                        required={requireJoinField('gender')}
                         value={gender}
                         onChange={(e) => setGender(e.target.value)}
                         className="w-full h-10 pr-10 pl-3 rounded-xl bg-neutral-50 dark:bg-slate-950/60 text-slate-800 dark:text-slate-100 border border-neutral-200 dark:border-slate-800 focus:border-indigo-505 transition-all text-xs appearance-none cursor-pointer"

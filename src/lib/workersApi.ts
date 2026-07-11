@@ -69,6 +69,26 @@ export interface PortalGroupOption {
   gradeLevel: string;
 }
 
+export type PortalJoinFieldKey =
+  | 'student_name'
+  | 'parent_phone'
+  | 'student_phone'
+  | 'academic_stage'
+  | 'grade'
+  | 'academic_group'
+  | 'gender';
+
+export type PortalJoinFieldConfig = {
+  visible: boolean;
+  required: boolean;
+};
+
+export type PortalJoinSettings = {
+  fields: Record<PortalJoinFieldKey, PortalJoinFieldConfig>;
+  stages: Record<string, boolean>;
+  grades: Record<string, boolean>;
+};
+
 export async function fetchCenterBySubdomain(subdomain: string): Promise<PortalCenterRecord | null> {
   const config = await dbAdapter.getCenterConfig();
   if (!config) return null;
@@ -87,6 +107,10 @@ export async function fetchCenterBySubdomain(subdomain: string): Promise<PortalC
 
 export async function fetchActiveGroups(): Promise<PortalGroupOption[]> {
   return dbAdapter.getActiveGroups();
+}
+
+export async function fetchPortalJoinSettings(): Promise<PortalJoinSettings> {
+  return dbAdapter.getPortalJoinSettings();
 }
 
 export async function loginStudent(phoneNumber: string, studentCode: string): Promise<StudentProfile | null> {
