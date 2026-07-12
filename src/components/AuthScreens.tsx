@@ -13,7 +13,7 @@ import {
   PortalJoinFieldKey,
   PortalJoinSettings,
 } from '../lib/workersApi';
-import { ArrowRight, CheckCircle2, AlertCircle, Sparkles, Phone, User, BookOpen, Layers, Users, Wifi, RefreshCw } from 'lucide-react';
+import { ArrowRight, CheckCircle2, AlertCircle, Sparkles, Phone, User, BookOpen, Layers, Users, Wifi } from 'lucide-react';
 import { StudentProfile, CenterConfig } from '../types';
 
 interface AuthScreensProps {
@@ -126,9 +126,10 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
     [centerGroups, grade],
   );
 
-  const refreshJoinData = useCallback(async () => {
+  const refreshJoinData = useCallback(async (): Promise<PortalJoinSettings> => {
     setGroupsLoading(true);
     setGroupsFetchError(false);
+    let nextSettings = DEFAULT_JOIN_SETTINGS;
 
     const [groupsResult, settingsResult] = await Promise.allSettled([
       fetchActiveGroups(),
@@ -143,13 +144,15 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
     }
 
     if (settingsResult.status === 'fulfilled') {
-      setJoinSettings(settingsResult.value);
+      nextSettings = settingsResult.value;
+      setJoinSettings(nextSettings);
     } else {
       console.error('fetchPortalJoinSettings failed:', settingsResult.reason);
-      setJoinSettings(DEFAULT_JOIN_SETTINGS);
+      setJoinSettings(nextSettings);
     }
 
     setGroupsLoading(false);
+    return nextSettings;
   }, []);
 
   useEffect(() => {
@@ -234,30 +237,36 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
     e.preventDefault();
     setJoinSuccessMsg('');
     setJoinErrorMsg('');
-
-    if (
-      (requireJoinField('student_name') && !studentName.trim()) ||
-      (requireJoinField('parent_phone') && !parentPhone.trim()) ||
-      (requireJoinField('student_phone') && !studentPhone.trim()) ||
-      (requireJoinField('academic_stage') && !academicStage.trim()) ||
-      (requireJoinField('grade') && !grade.trim()) ||
-      (requireJoinField('academic_group') && !academicGroup.trim())
-    ) {
-      setJoinErrorMsg('الرجاء إدخال اسم الطالب ورقم هاتف ولي الأمر (إلزامي)');
-      return;
-    }
-
     setIsSubmittingJoin(true);
 
     try {
+      const activeJoinSettings = await refreshJoinData();
+      const activeJoinField = (key: PortalJoinFieldKey) =>
+        activeJoinSettings.fields[key] || DEFAULT_JOIN_SETTINGS.fields[key];
+      const activeShowJoinField = (key: PortalJoinFieldKey) => activeJoinField(key).visible;
+      const activeRequireJoinField = (key: PortalJoinFieldKey) =>
+        activeJoinField(key).visible && activeJoinField(key).required;
+
+      if (
+        (activeRequireJoinField('student_name') && !studentName.trim()) ||
+        (activeRequireJoinField('parent_phone') && !parentPhone.trim()) ||
+        (activeRequireJoinField('student_phone') && !studentPhone.trim()) ||
+        (activeRequireJoinField('academic_stage') && !academicStage.trim()) ||
+        (activeRequireJoinField('grade') && !grade.trim()) ||
+        (activeRequireJoinField('academic_group') && !academicGroup.trim())
+      ) {
+        setJoinErrorMsg('الرجاء إدخال اسم الطالب ورقم هاتف ولي الأمر (إلزامي)');
+        return;
+      }
+
       const apiRes = await submitJoinRequest({
         student_name: studentName || 'طالب جديد',
-        phone: showJoinField('student_phone') ? (studentPhone || parentPhone || 'غير محدد') : (parentPhone || studentPhone || 'غير محدد'),
-        parent_phone: showJoinField('parent_phone') ? (parentPhone || studentPhone || 'غير محدد') : (studentPhone || parentPhone || 'غير محدد'),
-        grade: showJoinField('grade') ? grade : 'غير محدد',
-        academic_stage: showJoinField('academic_stage') ? academicStage : 'غير محدد',
-        academic_group: showJoinField('academic_group') ? (academicGroup || 'غير محدد') : 'غير محدد',
-        gender: showJoinField('gender') ? gender : '',
+        phone: activeShowJoinField('student_phone') ? (studentPhone || parentPhone || 'غير محدد') : (parentPhone || studentPhone || 'غير محدد'),
+        parent_phone: activeShowJoinField('parent_phone') ? (parentPhone || studentPhone || 'غير محدد') : (studentPhone || parentPhone || 'غير محدد'),
+        grade: activeShowJoinField('grade') ? grade : 'غير محدد',
+        academic_stage: activeShowJoinField('academic_stage') ? academicStage : 'غير محدد',
+        academic_group: activeShowJoinField('academic_group') ? (academicGroup || 'غير محدد') : 'غير محدد',
+        gender: activeShowJoinField('gender') ? gender : '',
       });
       if (apiRes.success) {
         setJoinSuccessMsg('تم تسجيل وإرسال طلب الانضمام بنجاح وسيتواصل معكم فريق القبول قريباً.');
@@ -499,26 +508,17 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
               <form
                 id="join-request-form"
                 onSubmit={handleJoinSubmit}
+                noValidate
                 className="space-y-4"
                 role="tabpanel"
                 aria-labelledby="auth-tab-join"
                 aria-describedby={joinErrorMsg ? 'join-error-message' : joinSuccessMsg ? 'join-success-message' : undefined}
               >
-                <div className="flex items-start justify-between gap-3 text-right">
+                <div className="text-right">
                   <div className="space-y-1">
                   <h2 className="text-base font-black text-text-primary">إرسال طلب التحاق جديد للسنتر</h2>
                   <p className="text-xs text-text-muted">املأ البيانات المطلوبة وسيتم إرسال طلب انضمام رسمي للأستاذ ومراجعته.</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={refreshJoinData}
-                    disabled={groupsLoading}
-                    className="h-9 px-3 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/15 disabled:opacity-60 text-indigo-650 dark:text-indigo-300 border border-indigo-500/15 text-[11px] font-bold transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer"
-                    aria-busy={groupsLoading}
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${groupsLoading ? 'animate-spin' : ''}`} />
-                    <span>تحديث</span>
-                  </button>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-4">

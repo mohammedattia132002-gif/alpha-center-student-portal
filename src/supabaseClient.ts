@@ -77,14 +77,6 @@ export const DEFAULT_PORTAL_JOIN_SETTINGS: PortalJoinSettings = {
 
 const PORTAL_JOIN_FIELD_KEYS = Object.keys(DEFAULT_PORTAL_JOIN_SETTINGS.fields) as PortalJoinFieldKey[];
 
-const CLOSED_PORTAL_JOIN_SETTINGS: PortalJoinSettings = {
-  fields: Object.fromEntries(
-    PORTAL_JOIN_FIELD_KEYS.map((key) => [key, { visible: false, required: false }]),
-  ) as Record<PortalJoinFieldKey, PortalJoinFieldConfig>,
-  stages: {},
-  grades: {},
-};
-
 function normalizePortalJoinSettings(value: unknown): PortalJoinSettings {
   const parsed = typeof value === 'string' && value.trim() ? JSON.parse(value) : value;
   const record = parsed && typeof parsed === 'object' ? parsed as Partial<PortalJoinSettings> : {};
@@ -337,6 +329,61 @@ function isFulfilled<T>(result: PromiseSettledResult<T>): result is PromiseFulfi
   return result.status === 'fulfilled';
 }
 
+async function fetchRowsWithFallback<T = any>(
+  client: any,
+  tableName: string,
+  configureVariants: Array<(query: any) => any>,
+  orderVariants: string[][] = [[]],
+  continueOnEmpty = false,
+): Promise<T[]> {
+  let lastError: unknown = null;
+  let emptyResult: T[] | null = null;
+
+  for (const configure of configureVariants) {
+    for (const orderColumns of orderVariants) {
+      try {
+        const rows = await fetchAllRows<T>(client, tableName, (query) => {
+          let nextQuery = configure(query);
+          for (const column of orderColumns) {
+            nextQuery = nextQuery.order(column, { ascending: false });
+          }
+          return nextQuery;
+        });
+        if (!continueOnEmpty || rows.length > 0) return rows;
+        emptyResult = rows;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+  }
+
+  if (emptyResult) return emptyResult;
+  if (lastError) throw lastError;
+  return [];
+}
+
+async function getStudentEnrollmentIds(client: any, studentId: string): Promise<string[]> {
+  try {
+    const rows = await fetchRowsWithFallback<Record<string, any>>(
+      client,
+      'enrollments',
+      [
+        (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId).is('deleted_at', null),
+        (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId),
+        (query) => query.eq('student_id', studentId).is('deleted_at', null),
+        (query) => query.eq('student_id', studentId),
+      ],
+      [['updated_at'], ['created_at'], []],
+      true,
+    );
+
+    return Array.from(new Set(rows.map((row) => safeUuid(row?.id)).filter((value): value is string => Boolean(value))));
+  } catch (error) {
+    console.warn('[portal] optional enrollment lookup failed:', error);
+    return [];
+  }
+}
+
 // app_settings.setting_value is a JSON column. The desktop stores plain scalar strings,
 // but supabase-js may hand them back either already-parsed or as a JSON-encoded string.
 function parseSettingValue(value: unknown): string {
@@ -433,7 +480,7 @@ async function resolveStudentGroupSummary(client: any, studentId: string): Promi
 
   const { data: groupRow } = await client
     .from('groups')
-    .select('id,name,grade,grade_level,subject,teacher,teacher_name')
+    .select('id,name,grade_level,subject,teacher,teacher_name')
     .eq('id', groupId)
     .maybeSingle();
 
@@ -702,7 +749,7 @@ export const dbAdapter = {
 
   async getPortalJoinSettings(): Promise<PortalJoinSettings> {
     if (!isSupabaseConfigured()) {
-      return CLOSED_PORTAL_JOIN_SETTINGS;
+      return DEFAULT_PORTAL_JOIN_SETTINGS;
     }
 
     const client = getSupabase();
@@ -716,56 +763,18 @@ export const dbAdapter = {
         .maybeSingle();
 
       if (error || !data) {
-        return CLOSED_PORTAL_JOIN_SETTINGS;
+        return DEFAULT_PORTAL_JOIN_SETTINGS;
       }
 
       return normalizePortalJoinSettings((data as any).setting_value);
     } catch (error) {
       console.error('Supabase portal join settings error:', error);
-      return CLOSED_PORTAL_JOIN_SETTINGS;
+      return DEFAULT_PORTAL_JOIN_SETTINGS;
     }
   },
 
 // Load group schedule times for the student's group
-  async getGroupTimes(studentId: string): Promise<GroupTimeSlot[]> {
-    let supabaseRecords: GroupTimeSlot[] = [];
-
-    if (isSupabaseConfigured()) {
-      const client = getSupabase();
-      try {
-        const groupSummary = await resolveStudentGroupSummary(client, studentId);
-        const groupId = safeUuid(groupSummary?.id);
-        if (groupId) {
-          const data = await fetchAllRows(client, 'group_times', (query) => query
-            .eq('tenant_id', PORTAL_TENANT_ID)
-            .eq('group_id', groupId)
-            .eq('is_active', true)
-            .is('deleted_at', null)
-            .order('weekday', { ascending: true })
-            .order('start_time', { ascending: true }));
-
-          if (Array.isArray(data)) {
-            supabaseRecords = data.map((row: any) => ({
-              id: String(row.id),
-              weekday: Number(row.weekday),
-              startTime: formatTimeLabel(row.start_time),
-              endTime: formatTimeLabel(row.end_time),
-              room: String(row.room || '').trim(),
-              teacherName: String(row.teacher_name || '').trim(),
-            }));
-          }
-        }
-      } catch (e) {
-        console.error('Supabase group times fetch error:', e);
-      }
-    }
-
-    const finalRecords = supabaseRecords;
-    if (finalRecords.length > 0) {
-      recordPortalDataRead('groupTimes', 'live');
-      return finalRecords.sort((a, b) => a.weekday - b.weekday || a.startTime.localeCompare(b.startTime));
-    }
-
+  async getGroupTimes(_studentId: string): Promise<GroupTimeSlot[]> {
     recordPortalDataRead('groupTimes', 'live');
     return [];
   },
@@ -822,45 +831,29 @@ export const dbAdapter = {
     if (isSupabaseConfigured()) {
       const client = getSupabase();
       try {
-        const data = await fetchAllRows(client, 'attendance', (query) => query
-          .eq('tenant_id', PORTAL_TENANT_ID)
-          .eq('student_id', studentId)
-          .is('deleted_at', null)
-          .order('date', { ascending: false })
-          .order('recorded_at', { ascending: false }));
+        const attendanceQueryVariants: Array<(query: any) => any> = [
+          (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId).is('deleted_at', null),
+          (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId),
+          (query) => query.eq('student_id', studentId).is('deleted_at', null),
+          (query) => query.eq('student_id', studentId),
+        ];
+
+        const data = await fetchRowsWithFallback<Record<string, any>>(
+          client,
+          'attendance',
+          attendanceQueryVariants,
+          [['date'], ['recorded_at'], ['created_at'], []],
+          true,
+        );
 
         if (Array.isArray(data)) {
-          const legacySessionIds = Array.from(
-            new Set(data.map((row: any) => safeUuid(row?.session_id)).filter((value): value is string => Boolean(value))),
-          );
-          const operationalSessionIds = Array.from(
-            new Set(data.map((row: any) => safeUuid(row?.operational_session_id)).filter((value): value is string => Boolean(value))),
-          );
-
-          const [legacySessionsResult, operationalSessionsResult, fallbackGroupResult] = await Promise.allSettled([
-            legacySessionIds.length
-              ? client.from('sessions').select('id,group_id,start_time,starts_at,date,metadata').in('id', legacySessionIds)
-              : Promise.resolve({ data: [] as any[] }),
-            operationalSessionIds.length
-              ? client
-                  .from('daily_sessions')
-                  .select('id,group_id,start_time,date,group_name_snapshot,teacher_snapshot,lifecycle_state')
-                  .in('id', operationalSessionIds)
-              : Promise.resolve({ data: [] as any[] }),
-            resolveStudentGroupSummary(client, studentId).catch(() => null),
-          ]);
-          const { data: legacyRows } = settledValue(legacySessionsResult, { data: [] as any[] });
-          const { data: operationalRows } = settledValue(operationalSessionsResult, { data: [] as any[] });
-          const fallbackGroup = settledValue(fallbackGroupResult, null);
-
-          const sessionRows = [
-            ...(Array.isArray(legacyRows) ? legacyRows : []),
-            ...(Array.isArray(operationalRows) ? operationalRows : []),
-          ];
+          const fallbackGroup = await resolveStudentGroupSummary(client, studentId).catch(() => null);
+          const sessionRows: any[] = [];
           const groupIds = Array.from(
             new Set(
               [
                 ...sessionRows.map((row: any) => safeUuid(row?.group_id)),
+                ...data.map((row: any) => safeUuid(row?.group_id)),
                 safeUuid(fallbackGroup?.id),
               ].filter((value): value is string => Boolean(value)),
             ),
@@ -878,7 +871,7 @@ export const dbAdapter = {
 
           supabaseRecords = data.map((row: any) => {
             const session = sessionMap.get(String(getAttendanceSessionId(row) || ''));
-            const group = groupMap.get(String(session?.group_id || fallbackGroup?.id || ''));
+            const group = groupMap.get(String(session?.group_id || row.group_id || fallbackGroup?.id || ''));
             const metadataName =
               typeof session?.metadata === 'object' && session?.metadata
                 ? String((session.metadata as Record<string, unknown>).title || (session.metadata as Record<string, unknown>).name || '')
@@ -887,12 +880,12 @@ export const dbAdapter = {
 
             return {
               id: String(row.id),
-              date: formatDateOnly(row.date || row.recorded_at || row.client_timestamp),
+              date: formatDateOnly(row.attendance_date || row.date || row.recorded_at || row.client_timestamp),
               subject: String(group?.subject || group?.name || session?.group_name_snapshot || metadataName || 'الحصة الدراسية').trim(),
               time: formatTimeLabel(session?.start_time || session?.starts_at || row.recorded_at || row.client_timestamp),
               status: status === 'late' ? 'late' : status === 'present' ? 'present' : status === 'excused' ? 'excused' : 'absent',
               lecturer: String(group?.teacher_name || group?.teacher || session?.teacher_snapshot || 'سنتر ألفا').trim(),
-              remarks: String(row.note || row.reason || '').trim() || undefined,
+              remarks: String(row.notes || row.note || row.reason || '').trim() || undefined,
             };
           });
         }
@@ -913,7 +906,7 @@ export const dbAdapter = {
 
   // Load payments
   async getPayments(studentId: string): Promise<PaymentRecord[]> {
-    let supabaseRecords: PaymentRecord[] = [];
+    let finalRecords: PaymentRecord[] = [];
     let isOutstanding = false;
     let outstandingAmt = 0;
     let studentCode = '';
@@ -921,23 +914,42 @@ export const dbAdapter = {
     if (isSupabaseConfigured()) {
       const client = getSupabase();
       try {
-        const data = await fetchAllRows(client, 'payments', (query) => query
-          .eq('tenant_id', PORTAL_TENANT_ID)
-          .eq('student_id', studentId)
-          .is('deleted_at', null)
-          .order('paid_at', { ascending: false })
-          .order('created_at', { ascending: false }));
-        const studentRowResult = await client
-          .from('students')
-          .select('id,student_code,balance')
-          .eq('tenant_id', PORTAL_TENANT_ID)
-          .eq('id', studentId)
-          .maybeSingle()
-          .catch((error: unknown) => {
-            console.warn('[portal] optional student balance read failed:', error);
-            return { data: null };
-          });
-        const studentRow = studentRowResult.data;
+        let paymentRows: Record<string, any>[] = [];
+        let ledgerRows: Record<string, any>[] = [];
+
+        try {
+          paymentRows = await fetchRowsWithFallback<Record<string, any>>(
+            client,
+            'payments',
+            [
+              (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId).is('deleted_at', null),
+              (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId),
+              (query) => query.eq('student_id', studentId).is('deleted_at', null),
+              (query) => query.eq('student_id', studentId),
+            ],
+            [['paid_at'], ['timestamp'], ['date'], ['payment_date'], ['created_at'], []],
+            true,
+          );
+        } catch (error) {
+          console.warn('[portal] payments table read failed; trying ledger fallback:', error);
+        }
+
+        let studentRow: Record<string, any> | null = null;
+        try {
+          const studentRowResult = await client
+            .from('students')
+            .select('id,student_code,balance')
+            .eq('tenant_id', PORTAL_TENANT_ID)
+            .eq('id', studentId)
+            .maybeSingle();
+          if (studentRowResult.error) {
+            console.warn('[portal] optional student balance read failed:', studentRowResult.error);
+          } else {
+            studentRow = studentRowResult.data;
+          }
+        } catch (error) {
+          console.warn('[portal] optional student balance read failed:', error);
+        }
 
         if (studentRow) {
           studentCode = (studentRow as any).student_code || '';
@@ -947,76 +959,92 @@ export const dbAdapter = {
           }
         }
 
-        if (Array.isArray(data)) {
-          const paymentRows: PaymentRecord[] = data.map((row: any) => ({
+        const mapPaymentRow = (row: Record<string, any>): PaymentRecord => {
+          const paidAt = row.paid_at || row.timestamp || row.payment_date || row.date || row.created_at;
+          const status = toPaymentStatus(row.status || (paidAt ? 'paid' : 'pending'));
+          const title = row.notes || row.note || row.payment_type || row.type || row.payment_method || row.method || 'دفعة مالية';
+          return {
             id: String(row.id),
-            title: String(row.notes || row.method || 'دفعة مالية').trim(),
+            title: String(title).trim(),
             amount: Number(row.amount || 0),
-            dueDate: formatDateOnly(row.date || row.paid_at || row.created_at),
-            paidDate: row.paid_at ? formatDateOnly(row.paid_at) : undefined,
-            status: toPaymentStatus(row.status || (row.paid_at ? 'paid' : 'pending')),
-            invoiceNo: String(row.receipt_no || row.id),
-            category: inferPaymentCategory(row.notes || row.method),
-          }));
-          let rows = paymentRows;
+            dueDate: formatDateOnly(row.date || row.payment_date || paidAt),
+            paidDate: status === 'paid' && paidAt ? formatDateOnly(paidAt) : undefined,
+            status,
+            invoiceNo: String(row.receipt_no || row.receipt_id || row.transaction_id || row.id),
+            category: inferPaymentCategory(title),
+          };
+        };
 
-          try {
-            const ledgerRows = await fetchAllRows(client, 'financial_ledger', (query) => query
-              .eq('tenant_id', PORTAL_TENANT_ID)
-              .eq('student_id', studentId)
-              .eq('reference_type', 'payment')
-              .eq('entry_type', 'debit')
-              .is('deleted_at', null)
-              .order('created_at', { ascending: false }));
-
-            if (Array.isArray(ledgerRows) && ledgerRows.length > 0) {
-              const knownPayments = new Map(data.map((row: any) => [String(row.id), row]));
-              const missingPaymentIds = Array.from(
-                new Set(
-                  ledgerRows
-                    .map((row: any) => safeUuid(row?.payment_id) || safeUuid(row?.reference_id))
-                    .filter((value: string | null): value is string => Boolean(value) && !knownPayments.has(value)),
-                ),
-              );
-              if (missingPaymentIds.length > 0) {
-                const { data: linkedPaymentRows } = await client
-                  .from('payments')
-                  .select('*')
-                  .eq('tenant_id', PORTAL_TENANT_ID)
-                  .in('id', missingPaymentIds);
-                if (Array.isArray(linkedPaymentRows)) {
-                  linkedPaymentRows.forEach((row: any) => knownPayments.set(String(row.id), row));
-                }
-              }
-
-              const ledgerPaymentRows: PaymentRecord[] = ledgerRows.map((ledger: any) => {
-                const paymentId = safeUuid(ledger?.payment_id) || safeUuid(ledger?.reference_id) || '';
-                const payment = knownPayments.get(paymentId);
-                return {
-                  id: String(payment?.id || paymentId || ledger.id),
-                  title: String(payment?.notes || payment?.method || ledger?.account_code || 'دفعة مالية').trim(),
-                  amount: Number(payment?.amount ?? ledger?.amount ?? 0),
-                  dueDate: formatDateOnly(payment?.date || payment?.paid_at || payment?.created_at || ledger?.created_at),
-                  paidDate: payment?.paid_at ? formatDateOnly(payment.paid_at) : formatDateOnly(ledger?.created_at),
-                  status: toPaymentStatus(payment?.status || payment?.paid_at || 'paid'),
-                  invoiceNo: String(payment?.receipt_no || ledger?.transaction_id || ledger?.id),
-                  category: inferPaymentCategory(payment?.notes || payment?.method || ledger?.account_code),
-                };
-              });
-              rows = mergePaymentRecords([...paymentRows, ...ledgerPaymentRows]);
-            }
-          } catch {
-            rows = paymentRows;
-          }
-
-          supabaseRecords = rows;
+        try {
+          ledgerRows = await fetchRowsWithFallback<Record<string, any>>(
+            client,
+            'financial_ledger',
+            [
+              (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId).eq('reference_type', 'payment').eq('entry_type', 'debit').is('deleted_at', null),
+              (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId).eq('reference_type', 'payment').eq('entry_type', 'debit'),
+              (query) => query.eq('student_id', studentId).eq('reference_type', 'payment').eq('entry_type', 'debit').is('deleted_at', null),
+              (query) => query.eq('student_id', studentId).eq('reference_type', 'payment').eq('entry_type', 'debit'),
+            ],
+            [['created_at'], []],
+            true,
+          );
+        } catch (error) {
+          console.warn('[portal] optional ledger payment read failed:', error);
         }
+
+        const knownPayments = new Map(paymentRows.map((row) => [String(row.id), row]));
+        const missingPaymentIds = Array.from(
+          new Set(
+            ledgerRows
+              .map((row) => safeUuid(row?.reference_id) || safeUuid(row?.payment_id))
+              .filter((value): value is string => Boolean(value) && !knownPayments.has(value)),
+          ),
+        );
+
+        if (missingPaymentIds.length > 0) {
+          try {
+            const linkedPaymentRows = await fetchRowsWithFallback<Record<string, any>>(
+              client,
+              'payments',
+              [
+                (query) => query.eq('tenant_id', PORTAL_TENANT_ID).in('id', missingPaymentIds).is('deleted_at', null),
+                (query) => query.eq('tenant_id', PORTAL_TENANT_ID).in('id', missingPaymentIds),
+                (query) => query.in('id', missingPaymentIds).is('deleted_at', null),
+                (query) => query.in('id', missingPaymentIds),
+              ],
+              [['paid_at'], ['timestamp'], ['created_at'], []],
+              true,
+            );
+            linkedPaymentRows.forEach((row) => knownPayments.set(String(row.id), row));
+          } catch (error) {
+            console.warn('[portal] optional linked payment read failed:', error);
+          }
+        }
+
+        const directPaymentRecords = paymentRows.map(mapPaymentRow);
+        const ledgerPaymentRecords: PaymentRecord[] = ledgerRows.map((ledger) => {
+          const paymentId = safeUuid(ledger?.reference_id) || safeUuid(ledger?.payment_id) || '';
+          const payment = knownPayments.get(paymentId);
+          if (payment) return mapPaymentRow(payment);
+
+          const title = ledger?.account_code || ledger?.account_type || 'دفعة مالية';
+          return {
+            id: String(paymentId || ledger.id),
+            title: String(title).trim(),
+            amount: Number(ledger?.amount ?? 0),
+            dueDate: formatDateOnly(ledger?.created_at),
+            paidDate: formatDateOnly(ledger?.created_at),
+            status: 'paid',
+            invoiceNo: String(ledger?.transaction_id || ledger?.id),
+            category: inferPaymentCategory(title),
+          };
+        });
+
+        finalRecords = mergePaymentRecords([...directPaymentRecords, ...ledgerPaymentRecords]);
       } catch (e) {
         console.error(e);
       }
     }
-
-    let finalRecords = supabaseRecords;
 
     if (isOutstanding && !finalRecords.some((row) => row.status === 'pending' || row.status === 'overdue')) {
       finalRecords.unshift({
@@ -1046,18 +1074,24 @@ export const dbAdapter = {
     if (isSupabaseConfigured()) {
       const client = getSupabase();
       try {
-        const data = await fetchAllRows(client, 'grades', (query) => query
-          .eq('tenant_id', PORTAL_TENANT_ID)
-          .eq('student_id', studentId)
-          .is('deleted_at', null)
-          .order('assessment_date', { ascending: false })
-          .order('created_at', { ascending: false }));
+        const data = await fetchRowsWithFallback<Record<string, any>>(
+          client,
+          'grades',
+          [
+            (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId).is('deleted_at', null),
+            (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId),
+            (query) => query.eq('student_id', studentId).is('deleted_at', null),
+            (query) => query.eq('student_id', studentId),
+          ],
+          [['assessment_date'], ['created_at'], ['updated_at'], []],
+          true,
+        );
 
         if (Array.isArray(data)) {
           supabaseRecords = data.map((row: any) => ({
             id: String(row.id),
             subjectCode: String(row.assessment_id || row.id || '').slice(0, 12).toUpperCase(),
-            subjectName: String(row.subject || 'تقييم').trim(),
+            subjectName: String(row.subject || row.exam_title || row.title || 'تقييم').trim(),
             category: mapGradeCategory(row.type),
             score: Number(row.score || 0),
             maxScore: Number(row.max_score || 0),
