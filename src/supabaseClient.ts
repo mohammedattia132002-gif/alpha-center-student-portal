@@ -47,6 +47,14 @@ export interface PortalDataReadMeta {
   source: PortalDataReadSource;
 }
 
+type PortalReadDiagnosticContext = Record<string, unknown>;
+
+type FetchRowsWithFallbackOptions = {
+  orderVariants?: string[][];
+  continueOnEmpty?: boolean;
+  diagnosticContext?: PortalReadDiagnosticContext;
+};
+
 interface SavedExamResult {
   score: number;
   maxScore: number;
@@ -60,6 +68,34 @@ interface SavedExamResult {
 }
 
 const lastPortalDataReads: Partial<Record<PortalDataReadKey, PortalDataReadMeta>> = {};
+
+function normalizePortalReadError(error: unknown): unknown {
+  if (!error || typeof error !== 'object') return error;
+  const record = error as Record<string, unknown>;
+  return {
+    message: record.message,
+    code: record.code,
+    details: record.details,
+    hint: record.hint,
+  };
+}
+
+function logPortalReadError(tableName: string, context: PortalReadDiagnosticContext, error: unknown): void {
+  console.warn('[portal] Supabase read failed. Check RLS tenant policies and sync status.', {
+    table: tableName,
+    tenantId: PORTAL_TENANT_ID,
+    ...context,
+    error: normalizePortalReadError(error),
+  });
+}
+
+function logPortalEmptyRead(tableName: string, context: PortalReadDiagnosticContext): void {
+  console.warn('[portal] Supabase read returned 0 rows. If desktop has data, check RLS tenant policies and sync status.', {
+    table: tableName,
+    tenantId: PORTAL_TENANT_ID,
+    ...context,
+  });
+}
 
 export const DEFAULT_PORTAL_JOIN_SETTINGS: PortalJoinSettings = {
   fields: {
@@ -327,9 +363,9 @@ async function fetchRowsWithFallback<T = any>(
   client: any,
   tableName: string,
   configureVariants: Array<(query: any) => any>,
-  orderVariants: string[][] = [[]],
-  continueOnEmpty = false,
+  options: FetchRowsWithFallbackOptions = {},
 ): Promise<T[]> {
+  const { orderVariants = [[]], continueOnEmpty = false, diagnosticContext = {} } = options;
   let lastError: unknown = null;
   let emptyResult: T[] | null = null;
 
@@ -351,7 +387,14 @@ async function fetchRowsWithFallback<T = any>(
     }
   }
 
-  if (emptyResult) return emptyResult;
+  if (emptyResult) {
+    logPortalEmptyRead(tableName, {
+      ...diagnosticContext,
+      queryVariants: configureVariants.length,
+      orderVariants: orderVariants.map((columns) => columns.join(',') || 'none'),
+    });
+    return emptyResult;
+  }
   if (lastError) throw lastError;
   return [];
 }
@@ -654,7 +697,14 @@ export const dbAdapter = {
         .in('setting_key', ['teacher_name', 'subject_name', 'center_name'])
         .is('deleted_at', null);
 
-      if (error || !Array.isArray(data)) return null;
+      if (error) {
+        logPortalReadError('app_settings', { settingKeys: ['teacher_name', 'subject_name', 'center_name'] }, error);
+        return null;
+      }
+      if (!Array.isArray(data)) return null;
+      if (data.length === 0) {
+        logPortalEmptyRead('app_settings', { settingKeys: ['teacher_name', 'subject_name', 'center_name'] });
+      }
 
       const settings = new Map<string, string>();
       for (const row of data) {
@@ -668,7 +718,7 @@ export const dbAdapter = {
         subjectName: settings.get('subject_name') || undefined,
       };
     } catch (e) {
-      console.error('Supabase center config error:', e);
+      logPortalReadError('app_settings', { settingKeys: ['teacher_name', 'subject_name', 'center_name'] }, e);
       return null;
     }
   },
@@ -721,13 +771,18 @@ export const dbAdapter = {
         .is('deleted_at', null)
         .maybeSingle();
 
-      if (error || !data) {
+      if (error) {
+        logPortalReadError('app_settings', { settingKey: 'portal_join_config' }, error);
+        return DEFAULT_PORTAL_JOIN_SETTINGS;
+      }
+      if (!data) {
+        logPortalEmptyRead('app_settings', { settingKey: 'portal_join_config' });
         return DEFAULT_PORTAL_JOIN_SETTINGS;
       }
 
       return normalizePortalJoinSettings((data as any).setting_value);
     } catch (error) {
-      console.error('Supabase portal join settings error:', error);
+      logPortalReadError('app_settings', { settingKey: 'portal_join_config' }, error);
       return DEFAULT_PORTAL_JOIN_SETTINGS;
     }
   },
@@ -801,8 +856,11 @@ export const dbAdapter = {
           client,
           'attendance',
           attendanceQueryVariants,
-          [['date'], ['recorded_at'], ['created_at'], []],
-          true,
+          {
+            orderVariants: [['date'], ['recorded_at'], ['created_at'], []],
+            continueOnEmpty: true,
+            diagnosticContext: { studentId },
+          },
         );
 
         if (Array.isArray(data)) {
@@ -849,7 +907,7 @@ export const dbAdapter = {
           });
         }
       } catch (e) {
-        console.error(e);
+        logPortalReadError('attendance', { studentId }, e);
       }
     }
 
@@ -885,11 +943,14 @@ export const dbAdapter = {
               (query) => query.eq('student_id', studentId).is('deleted_at', null),
               (query) => query.eq('student_id', studentId),
             ],
-            [['paid_at'], ['timestamp'], ['date'], ['payment_date'], ['created_at'], []],
-            true,
+            {
+              orderVariants: [['paid_at'], ['timestamp'], ['date'], ['payment_date'], ['created_at'], []],
+              continueOnEmpty: true,
+              diagnosticContext: { studentId },
+            },
           );
         } catch (error) {
-          console.warn('[portal] payments table read failed:', error);
+          logPortalReadError('payments', { studentId }, error);
         }
 
         let studentRow: Record<string, any> | null = null;
@@ -936,7 +997,7 @@ export const dbAdapter = {
         const directPaymentRecords = paymentRows.map(mapPaymentRow);
         finalRecords = mergePaymentRecords(directPaymentRecords);
       } catch (e) {
-        console.error(e);
+        logPortalReadError('payments', { studentId }, e);
       }
     }
 
@@ -977,8 +1038,11 @@ export const dbAdapter = {
             (query) => query.eq('student_id', studentId).is('deleted_at', null),
             (query) => query.eq('student_id', studentId),
           ],
-          [['assessment_date'], ['created_at'], ['updated_at'], []],
-          true,
+          {
+            orderVariants: [['assessment_date'], ['created_at'], ['updated_at'], []],
+            continueOnEmpty: true,
+            diagnosticContext: { studentId },
+          },
         );
 
         if (Array.isArray(data)) {
@@ -998,7 +1062,7 @@ export const dbAdapter = {
           }));
         }
       } catch (e) {
-        console.error(e);
+        logPortalReadError('grades', { studentId }, e);
       }
     }
 
