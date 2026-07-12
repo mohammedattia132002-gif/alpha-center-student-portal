@@ -22,6 +22,11 @@
   --color-bg-app: var(--bg-app);
   --color-bg-card: var(--bg-card);
   --color-border-card: var(--border-card);
+
+  --color-zinc-150: #e4e4e7;
+  --color-indigo-650: #4940d7;
+  --color-slate-850: #161e2e;
+  --color-neutral-150: #e5e5e5;
 }
 
 :root {

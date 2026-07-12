@@ -1,4 +1,4 @@
-﻿﻿/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { calculateAttendanceRate } from '../hooks/useStudentStats';
 import { useAccessibleDialog } from '../hooks/useAccessibleDialog';
 import { playPortalTap } from '../lib/audioFeedback';
+import { formatArabicDate, formatArabicDateShort, formatArabicTime, getArabicDayName, toArabicNumerals } from '../utils/arabicFormat';
 
 interface AttendanceProps {
   records: AttendanceRecord[];
@@ -139,7 +140,7 @@ export default function Attendance({ records }: AttendanceProps) {
         <div className="flex items-center justify-between gap-4">
           <div className="text-right">
             <span className="text-2xl md:text-3xl font-black font-mono text-white block">{attendanceRate}%</span>
-            <span className="text-[10px] text-white block font-sans">إجمالي الجلسات المرصودة: {total}</span>
+            <span className="text-[10px] text-white block font-sans">إجمالي الحصص المرصودة: {total}</span>
           </div>
 
           <div className="flex gap-2 font-mono">
@@ -164,7 +165,7 @@ export default function Attendance({ records }: AttendanceProps) {
 
         <div className="flex justify-between items-center pb-2 border-b border-gray-100/60 dark:border-slate-850/50 select-none">
           <span className="text-[10px] text-neutral-450 dark:text-slate-300">اضغط على المربع لعرض تفاصيل اليوم الأكاديمي</span>
-          <h3 className="text-xs font-black text-slate-800 dark:text-zinc-150">الخريطة الحرارية الموحدة (آخر 28 سجل)</h3>
+          <h3 className="text-xs font-black text-indigo-600 dark:text-indigo-400">الخريطة الحرارية الموحدة (آخر 28 سجل)</h3>
         </div>
 
         <div className="grid grid-cols-7 gap-2.5 py-1 justify-items-center" dir="rtl">
@@ -286,8 +287,8 @@ export default function Attendance({ records }: AttendanceProps) {
                     </span>
 
                     <div className="text-right">
-                      <h4 className="text-xs font-black text-slate-800 dark:text-zinc-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">جلسة يوم {log.date}</h4>
-                      <p className="text-[10px] text-neutral-450 dark:text-slate-300 font-mono mt-0.5">{log.subject} • {log.time}</p>
+                      <h4 className="text-xs font-black text-slate-800 dark:text-zinc-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">حصة يوم {formatArabicDate(log.date)}</h4>
+                      <p className="text-[10px] text-neutral-450 dark:text-slate-300 font-mono mt-0.5">{log.subject} • {formatArabicTime(log.time)}</p>
                     </div>
                   </div>
 
@@ -331,8 +332,8 @@ export default function Attendance({ records }: AttendanceProps) {
 
               <div className="flex items-center justify-between border-b border-gray-100/60 dark:border-slate-850/50 pb-3">
                 <div className="text-right">
-                  <h3 id="attendance-daylog-title" className="text-sm font-black text-slate-800 dark:text-white">سجل يوم {selectedDayLog.date}</h3>
-                  <span id="attendance-daylog-description" className="text-[10px] text-neutral-500 dark:text-zinc-300 block mt-0.5 font-mono">تفاصيل الحضور المعتمدة</span>
+                  <h3 id="attendance-daylog-title" className="text-sm font-black text-slate-800 dark:text-white">حصة يوم {getArabicDayName(selectedDayLog.date)}</h3>
+                  <span id="attendance-daylog-description" className="text-[10px] text-neutral-500 dark:text-zinc-300 block mt-0.5 font-mono">{formatArabicDate(selectedDayLog.date)}</span>
                 </div>
                 <button
                   type="button"
@@ -346,18 +347,8 @@ export default function Attendance({ records }: AttendanceProps) {
 
               <div className="space-y-3.5 pr-1 text-right">
                 <div className="flex justify-between text-right gap-4 border-b border-gray-100/50 dark:border-slate-850/50 pb-2">
-                  <span className="text-xs text-neutral-500 dark:text-zinc-300">المادة:</span>
-                  <span className="text-xs font-black text-gray-800 dark:text-zinc-200">{selectedDayLog.subject}</span>
-                </div>
-
-                <div className="flex justify-between text-right gap-4 border-b border-gray-100/50 dark:border-slate-850/50 pb-2">
-                  <span className="text-xs text-neutral-500 dark:text-zinc-300">المدرس:</span>
-                  <span className="text-xs font-black text-gray-800 dark:text-zinc-200">{selectedDayLog.lecturer}</span>
-                </div>
-
-                <div className="flex justify-between text-right gap-4 border-b border-gray-100/50 dark:border-slate-850/50 pb-2">
-                  <span className="text-xs text-neutral-500 dark:text-zinc-300">الفترة الزمنية:</span>
-                  <span className="text-xs font-bold text-gray-800 dark:text-zinc-200 font-mono">{selectedDayLog.time}</span>
+                  <span className="text-xs text-neutral-500 dark:text-zinc-300">وقت الحضور:</span>
+                  <span className="text-xs font-bold text-gray-800 dark:text-zinc-200 font-sans">{formatArabicTime(selectedDayLog.time)}</span>
                 </div>
 
                 <div className="flex justify-between text-right gap-4 border-b border-gray-100/50 dark:border-slate-850/50 pb-2">
@@ -373,13 +364,16 @@ export default function Attendance({ records }: AttendanceProps) {
                             : 'text-rose-500'
                     }`}
                   >
-                    {getStatusDetails(selectedDayLog.status).text}
+                    <span className={selectedDayLog.status === 'present' ? 'text-emerald-500' : selectedDayLog.status === 'late' ? 'text-amber-500' : selectedDayLog.status === 'excused' ? 'text-indigo-500' : 'text-rose-500'}>
+                      {selectedDayLog.status === 'present' ? '🟢' : selectedDayLog.status === 'late' ? '🟡' : selectedDayLog.status === 'excused' ? '🔵' : '🔴'}
+                    </span>
+                    {selectedDayLog.status === 'present' ? '✔️' : selectedDayLog.status === 'late' ? '⏰' : selectedDayLog.status === 'excused' ? '📋' : '✕'} {getStatusDetails(selectedDayLog.status).text}
                   </span>
                 </div>
 
                 <div className="flex justify-between text-right gap-4 border-b border-gray-100/50 dark:border-slate-850/50 pb-2">
                   <span className="text-xs text-neutral-500 dark:text-zinc-300">تاريخ التسجيل:</span>
-                  <span className="text-xs font-bold text-gray-800 dark:text-zinc-200 font-mono">{selectedDayLog.date}</span>
+                  <span className="text-xs font-bold text-gray-800 dark:text-zinc-200 font-sans">{formatArabicDateShort(selectedDayLog.date)}</span>
                 </div>
 
                 <div className="p-3.5 bg-neutral-50 dark:bg-slate-950 rounded-2xl border border-neutral-200/50 dark:border-slate-850 space-y-1">

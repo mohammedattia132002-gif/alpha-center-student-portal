@@ -24,6 +24,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { getGreeting, GreetingResult } from '../lib/getGreeting';
 import { playPortalTap } from '../lib/audioFeedback';
 import { useStudentStats } from '../hooks/useStudentStats';
+import { formatArabicDate, formatArabicTime, formatArabicDateShort } from '../utils/arabicFormat';
 import EmptyState from './EmptyState';
 
 interface DashboardProps {
@@ -332,8 +333,8 @@ export default function Dashboard({ profile, attendance, grades, groupTimes, onN
                     }`} />
                     
                     <div className="text-right">
-                      <span className="block text-xs font-black text-text-primary">فصل/محاضرة يوم {log.date}</span>
-                      <span className="block text-[9px] text-text-muted font-mono mt-0.5">{log.date} • {log.time}</span>
+                      <span className="block text-xs font-black text-text-primary">فصل/محاضرة يوم {formatArabicDate(log.date)}</span>
+                      <span className="block text-[9px] text-text-muted font-sans mt-0.5">{formatArabicTime(log.time)}</span>
                     </div>
                   </div>
 

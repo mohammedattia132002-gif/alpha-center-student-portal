@@ -1,4 +1,4 @@
-﻿﻿/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -13,6 +13,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Area, AreaChart } from 'recharts';
 import { playPortalTap } from '../lib/audioFeedback';
+import { formatArabicDate } from '../utils/arabicFormat';
 
 interface GradesProps {
   records: GradeRecord[];
@@ -235,8 +236,8 @@ export default function Grades({ records }: GradesProps) {
 
                 <div className="flex justify-between items-start">
                   <div className="text-right">
-                    <h4 className="text-xs font-black text-slate-800 dark:text-zinc-150 group-hover:text-indigo-650 dark:group-hover:text-indigo-400 transition-colors">امتحان يوم {grade.date}</h4>
-                    <span className="text-[10px] text-neutral-400 block mt-1 font-sans font-mono">{grade.subjectCode} • كشف: {grade.date}</span>
+                    <h4 className="text-xs font-black text-slate-800 dark:text-zinc-150 group-hover:text-indigo-650 dark:group-hover:text-indigo-400 transition-colors">امتحان يوم {formatArabicDate(grade.date)}</h4>
+                    <span className="text-[10px] text-neutral-400 block mt-1 font-sans">{grade.subjectCode} • {formatArabicDate(grade.date)}</span>
                   </div>
 
                   <span className={`w-11 h-11 rounded-xl font-sans font-black text-base flex items-center justify-center border shrink-0 shadow-sm ${getLetterBadgeStyle(grade.gradeLetter)}`}>
