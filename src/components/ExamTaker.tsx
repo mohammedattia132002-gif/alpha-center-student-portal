@@ -1,4 +1,4 @@
-﻿﻿/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -35,6 +35,29 @@ const isNumericQuestion = (question: ExamQuestion): boolean =>
 
 const isGeneratedPdfQuestionText = (text: string | undefined): boolean =>
   /^Question page \d+$/i.test(String(text || '').trim());
+
+const STANDALONE_CHOICE_LABELS = new Set(['A', 'B', 'C', 'D', 'أ', 'ب', 'ج', 'د']);
+
+const normalizeChoiceLabel = (text: string | undefined): string =>
+  String(text || '').trim().replace(/[.)،:؛-]+$/g, '').toUpperCase();
+
+const isStandaloneChoiceLabel = (text: string | undefined): boolean =>
+  STANDALONE_CHOICE_LABELS.has(normalizeChoiceLabel(text));
+
+const getFallbackChoiceLabel = (index: number): string =>
+  index >= 0 && index < 26 ? String.fromCharCode(65 + index) : String(index + 1);
+
+const getChoiceBadgeText = (choiceText: string | undefined, index: number): string => {
+  const normalizedLabel = normalizeChoiceLabel(choiceText);
+  return STANDALONE_CHOICE_LABELS.has(normalizedLabel)
+    ? normalizedLabel
+    : getFallbackChoiceLabel(index);
+};
+
+const getChoiceDisplayText = (choiceText: string | undefined, badgeText: string): string => {
+  const text = String(choiceText || '').trim();
+  return text && !isStandaloneChoiceLabel(text) ? text : `اختيار ${badgeText}`;
+};
 
 export default function ExamTaker({ exams, currentStudent, onAddGrade }: ExamTakerProps) {
   const [activeSession, setActiveSession] = useState<{
@@ -267,7 +290,8 @@ export default function ExamTaker({ exams, currentStudent, onAddGrade }: ExamTak
       feedback: `تم اجتياز الاختبار الرقمي المعزز وتوثيق العلامة بنسبة بلغت ${scorePct.toFixed(0)}%.`,
       gpaWeight: gpaW,
       passed: isPassing,
-      sourceExamId: exam.id
+      sourceExamId: exam.id,
+      examMode: 'electronic'
     };
 
     setCompletedAttempt(attempt);
@@ -323,7 +347,7 @@ export default function ExamTaker({ exams, currentStudent, onAddGrade }: ExamTak
             </div>
 
             <p className="text-xs text-neutral-455 dark:text-slate-300 leading-relaxed font-sans">
-              تم إدراج الاختبارات المجدولة لك لليوم. يرجى أخذها في بيئة هادئة ومستقلة، يراقب معيار الذكاء الاصطناعي مغادرة تبويت المتصفح لضمان أمان الامتحان.
+              يرجى التأكد من جاهزية بيئة الامتحان قبل البدء. يُجرى الامتحان في بيئة هادئة ومستقرة، ويستخدم النظام تقنيات مراقبة ذكية لرصد أي مخالفات محتملة، بما يضمن نزاهة الامتحان وتكافؤ الفرص بين جميع الطلاب.
             </p>
           </div>
 
@@ -488,8 +512,10 @@ export default function ExamTaker({ exams, currentStudent, onAddGrade }: ExamTak
               </label>
             )}
             <div className="space-y-2.5 pt-2" role="radiogroup" aria-label={`خيارات السؤال ${activeSession.currentQuestionIndex + 1}`}>
-              {(currentQuestion?.options || []).map((opt) => {
+              {(currentQuestion?.options || []).map((opt, optionIndex) => {
                 const isSelected = currentAnswer === opt.id;
+                const badgeText = getChoiceBadgeText(opt.text, optionIndex);
+                const displayText = getChoiceDisplayText(opt.text, badgeText);
                 
                 return (
                   <button
@@ -504,14 +530,14 @@ export default function ExamTaker({ exams, currentStudent, onAddGrade }: ExamTak
                         : 'bg-neutral-50 dark:bg-slate-950 hover:bg-neutral-100 dark:hover:bg-slate-850 text-neutral-650 dark:text-zinc-300 border border-neutral-200/50 dark:border-slate-850'
                     }`}
                   >
-                    <span className={`w-5.5 h-5.5 rounded-full border flex items-center justify-center text-[10px] shrink-0 ${
+                    <span className={`min-w-7 h-7 px-1 rounded-full border flex items-center justify-center text-[10px] font-black shrink-0 overflow-hidden whitespace-nowrap ${
                       isSelected ? 'bg-white text-indigo-650 border-white' : 'border-neutral-300 dark:border-slate-800'
                     }`}>
-                      {opt.id.toUpperCase()}
+                      {badgeText}
                     </span>
 
                     <span className="text-[11px] font-sans leading-relaxed text-right flex-1 select-none pr-1">
-                      {opt.text}
+                      {displayText}
                     </span>
                   </button>
                 );
@@ -557,7 +583,7 @@ export default function ExamTaker({ exams, currentStudent, onAddGrade }: ExamTak
       {/* 5. PHYSICAL INSTRUCTIONS OVERLAY SHEET */}
       <AnimatePresence>
         {selectedExamForInstructions && (
-          <div className="absolute inset-0 z-50 flex flex-col justify-end">
+          <div className="absolute inset-0 z-50 flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
@@ -569,19 +595,17 @@ export default function ExamTaker({ exams, currentStudent, onAddGrade }: ExamTak
 
             <motion.div 
               ref={examInstructionsDialogRef}
-              initial={{ y: '100%' }} 
-              animate={{ y: 0 }} 
-              exit={{ y: '100%' }} 
-              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className="bg-white dark:bg-slate-900 rounded-t-[32px] border-t border-white/10 p-5 z-10 w-full space-y-4 max-h-[85%] overflow-y-auto font-sans text-right select-none"
+              initial={{ opacity: 0, scale: 0.95, y: 16 }} 
+              animate={{ opacity: 1, scale: 1, y: 0 }} 
+              exit={{ opacity: 0, scale: 0.95, y: 16 }} 
+              transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+              className="bg-white dark:bg-slate-900 rounded-[28px] border border-white/10 p-5 z-10 w-full max-w-lg space-y-4 max-h-[85vh] overflow-y-auto font-sans text-right select-none"
               role="dialog"
               aria-modal="true"
               aria-labelledby="exam-instructions-title"
               aria-describedby="exam-instructions-description"
               tabIndex={-1}
             >
-              <div className="w-12 h-1 bg-gray-300 dark:bg-neutral-800 rounded-full mx-auto" />
-
               <div className="flex items-center justify-between border-b border-gray-50 dark:border-slate-850/60 pb-3">
                 <div className="text-right">
                   <h3 id="exam-instructions-title" className="text-sm font-black text-gray-900 dark:text-white">تفاصيل وإرشادات الامتحان</h3>

@@ -8,6 +8,7 @@ import {
   isSupabaseConfigured,
 } from '../supabaseClient';
 import { AttendanceRecord, Exam, GradeRecord, GroupTimeSlot, PaymentRecord, StudentProfile } from '../types';
+import studentSnapshots from '../../data/student-snapshots.json';
 
 interface JoinRequestPayload {
   student_name: string;
@@ -27,6 +28,20 @@ interface JoinRequestResponse {
 export const isWorkersApiConfigured = isSupabaseConfigured;
 
 const READ_RETRY_DELAYS_MS = [250, 750];
+
+type SnapshotAttendanceRecord = {
+  id?: string;
+  date?: string;
+  status?: string;
+  check_in_time?: string;
+  session_name?: string;
+};
+
+type StudentSnapshot = {
+  attendance?: SnapshotAttendanceRecord[];
+};
+
+const studentSnapshotMap = studentSnapshots as Record<string, StudentSnapshot>;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -55,6 +70,43 @@ function isRetryableReadError(error: unknown): boolean {
     message.includes('connection') ||
     message.includes('offline')
   );
+}
+
+function toAttendanceStatus(value: unknown): AttendanceRecord['status'] {
+  const status = String(value || '').trim().toLowerCase();
+  if (status === 'present' || status === 'late' || status === 'excused') return status;
+  return 'absent';
+}
+
+function getSnapshotAttendance(studentId: string): AttendanceRecord[] {
+  const snapshot = studentSnapshotMap[String(studentId || '').trim()];
+  if (!snapshot?.attendance?.length) return [];
+
+  return snapshot.attendance.map((record, index) => ({
+    id: String(record.id || `snapshot-attendance-${studentId}-${record.date || index}`),
+    date: String(record.date || ''),
+    subject: String(record.session_name || 'الحصة').trim() || 'الحصة',
+    time: String(record.check_in_time || ''),
+    status: toAttendanceStatus(record.status),
+    lecturer: 'سنتر ألفا',
+  }));
+}
+
+function mergeAttendanceRecords(liveRecords: AttendanceRecord[], snapshotRecords: AttendanceRecord[]): AttendanceRecord[] {
+  const merged = new Map<string, AttendanceRecord>();
+
+  for (const record of snapshotRecords) {
+    merged.set(record.id, record);
+  }
+  for (const record of liveRecords) {
+    merged.set(record.id, record);
+  }
+
+  return Array.from(merged.values()).sort((left, right) => {
+    const rightTime = new Date(right.date).getTime();
+    const leftTime = new Date(left.date).getTime();
+    return (Number.isFinite(rightTime) ? rightTime : 0) - (Number.isFinite(leftTime) ? leftTime : 0);
+  });
 }
 
 async function withReadRetry<T>(operationName: string, read: () => Promise<T>): Promise<T> {
@@ -159,7 +211,12 @@ export async function loginStudent(phoneNumber: string, studentCode: string): Pr
 }
 
 export async function fetchAttendance(studentId: string): Promise<AttendanceRecord[]> {
-  return withReadRetry('attendance', () => dbAdapter.getAttendance(studentId));
+  const [liveRecords, snapshotRecords] = await Promise.all([
+    withReadRetry('attendance', () => dbAdapter.getAttendance(studentId)),
+    Promise.resolve(getSnapshotAttendance(studentId)),
+  ]);
+
+  return mergeAttendanceRecords(liveRecords, snapshotRecords);
 }
 
 export async function fetchPayments(studentId: string): Promise<PaymentRecord[]> {

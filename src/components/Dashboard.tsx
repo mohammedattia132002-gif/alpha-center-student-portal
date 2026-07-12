@@ -164,17 +164,27 @@ export default function Dashboard({ profile, attendance, grades, groupTimes, onN
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {groupTimes.map((slot) => (
+            {groupTimes.map((slot) => {
+              const timeRange = [slot.startTime, slot.endTime]
+                .filter(Boolean)
+                .map(formatArabicTime)
+                .join(' - ');
+
+              return (
               <div key={slot.id} className="p-3.5 bg-neutral-50/60 dark:bg-slate-950/40 rounded-2xl border border-border-card hover:bg-neutral-100/50 dark:hover:bg-slate-900/55 transition-all duration-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
                   <span className="text-xs font-black text-text-primary">{daysOfWeekLabels[slot.weekday] || 'غير محدد'}</span>
                 </div>
+                  {timeRange && (
+                    <div className="flex items-center gap-1.5 text-[10px] text-text-muted font-sans shrink-0">
+                      <Clock className="w-3 h-3" />
+                      <span>{timeRange}</span>
+                    </div>
+                  )}
+                </div>
                 <div className="space-y-1.5 pr-3.5">
-                  <div className="flex items-center gap-1.5 text-[10px] text-text-muted font-sans">
-                    <Clock className="w-3 h-3" />
-                    <span>{slot.startTime} - {slot.endTime}</span>
-                  </div>
                   {slot.room && (
                     <div className="flex items-center gap-1.5 text-[10px] text-text-muted font-sans">
                       <MapPin className="w-3 h-3" />
@@ -189,7 +199,8 @@ export default function Dashboard({ profile, attendance, grades, groupTimes, onN
                   )}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

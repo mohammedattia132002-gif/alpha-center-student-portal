@@ -435,6 +435,7 @@ const [groupTimes, setGroupTimes] = useState<GroupTimeSlot[]>(() => []);
         return (
           <Grades 
             records={grades} 
+            exams={exams} 
           />
         );
       case 'exams':
@@ -490,7 +491,7 @@ const [groupTimes, setGroupTimes] = useState<GroupTimeSlot[]>(() => []);
             <div className="text-right">
               <span className="text-[10px] text-text-muted block font-mono">مرحباً بك،</span>
               <span className="text-xs font-black text-text-primary flex items-center gap-1">
-                {profile.name.split(" ")[0]} {profile.name.split(" ")[1]}
+                {profile.name}
                 <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
               </span>
             </div>

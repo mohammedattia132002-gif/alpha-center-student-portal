@@ -104,7 +104,7 @@ export default function Attendance({ records }: AttendanceProps) {
   const excusedCount = records.filter((record) => record.status === 'excused').length;
   const attendanceRate = calculateAttendanceRate(records).toFixed(1);
 
-  const recentHeatmapRecords = sortedRecords.slice(0, 28).reverse();
+  const recentHeatmapRecords = sortedRecords.slice(0, 28);
   const heatmapDays = [
     ...Array.from({ length: Math.max(0, 28 - recentHeatmapRecords.length) }, (_, index) => ({
       id: `heat-empty-${index}`,
@@ -163,9 +163,9 @@ export default function Attendance({ records }: AttendanceProps) {
       <div className="bg-white/80 backdrop-blur-md dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-850/60 p-5 rounded-3xl shadow-[0_4px_18px_rgba(15,23,42,0.02)] space-y-4 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-emerald-500/5 to-transparent rounded-full blur-xl" />
 
-        <div className="flex justify-between items-center pb-2 border-b border-gray-100/60 dark:border-slate-850/50 select-none">
-          <span className="text-[10px] text-neutral-450 dark:text-slate-300">اضغط على المربع لعرض تفاصيل اليوم الأكاديمي</span>
+        <div className="pb-2 border-b border-gray-100/60 dark:border-slate-850/50 select-none space-y-1">
           <h3 className="text-xs font-black text-indigo-600 dark:text-indigo-400">الخريطة الحرارية الموحدة (آخر 28 سجل)</h3>
+          <span className="text-[10px] text-neutral-450 dark:text-slate-300 block">اضغط على المربع لعرض تفاصيل اليوم الأكاديمي</span>
         </div>
 
         <div className="grid grid-cols-7 gap-2.5 py-1 justify-items-center" dir="rtl">
@@ -200,7 +200,6 @@ export default function Attendance({ records }: AttendanceProps) {
         <div className="flex items-center gap-3.5 text-[10px] text-neutral-500 dark:text-slate-300 justify-center flex-wrap select-none pt-2 border-t border-gray-100/50 dark:border-slate-850/50 font-sans">
           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-emerald-500 shadow-sm" /> حضور ({presentCount})</span>
           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-amber-500 shadow-sm" /> متأخر ({lateCount})</span>
-          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-indigo-500 shadow-sm" /> معذور ({excusedCount})</span>
           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-rose-500 shadow-sm" /> غياب ({absentCount})</span>
         </div>
       </div>
@@ -224,7 +223,6 @@ export default function Attendance({ records }: AttendanceProps) {
             { tag: 'all', title: 'الكل' },
             { tag: 'present', title: 'حاضر فقط' },
             { tag: 'late', title: 'متأخر' },
-            { tag: 'excused', title: 'معذور' },
             { tag: 'absent', title: 'غياب' },
           ].map((item) => (
             <button
@@ -304,7 +302,7 @@ export default function Attendance({ records }: AttendanceProps) {
 
       <AnimatePresence>
         {selectedDayLog && (
-          <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -316,11 +314,11 @@ export default function Attendance({ records }: AttendanceProps) {
 
             <motion.div
               ref={dayLogDialogRef}
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className="bg-white dark:bg-slate-900 rounded-t-[32px] border-t border-white/10 p-6 z-10 w-full space-y-4 max-h-[75%] overflow-y-auto select-none font-sans text-right"
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+              className="bg-white dark:bg-slate-900 rounded-[28px] border border-white/10 p-6 z-10 w-full max-w-lg space-y-4 max-h-[85vh] overflow-y-auto select-none font-sans text-right"
               dir="rtl"
               role="dialog"
               aria-modal="true"
@@ -328,8 +326,6 @@ export default function Attendance({ records }: AttendanceProps) {
               aria-describedby="attendance-daylog-description"
               tabIndex={-1}
             >
-              <div className="w-12 h-1 bg-gray-300 dark:bg-neutral-800 rounded-full mx-auto mb-2" />
-
               <div className="flex items-center justify-between border-b border-gray-100/60 dark:border-slate-850/50 pb-3">
                 <div className="text-right">
                   <h3 id="attendance-daylog-title" className="text-sm font-black text-slate-800 dark:text-white">حصة يوم {getArabicDayName(selectedDayLog.date)}</h3>

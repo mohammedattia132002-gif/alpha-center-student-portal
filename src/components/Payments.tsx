@@ -508,7 +508,9 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
   const totalPaid = records.filter((record) => record.status === 'paid').reduce((sum, record) => sum + record.amount, 0);
 
-  const totalOutstanding = records.filter((record) => record.status !== 'paid').reduce((sum, record) => sum + record.amount, 0);
+  const totalPending = records.filter((record) => record.status === 'pending').reduce((sum, record) => sum + record.amount, 0);
+
+  const totalOverdue = records.filter((record) => record.status === 'overdue').reduce((sum, record) => sum + record.amount, 0);
 
   const totalFees = records.reduce((sum, record) => sum + record.amount, 0);
 
@@ -656,8 +658,6 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
             </span>
 
-            <span className="text-[11px] font-medium text-neutral-455 dark:text-slate-300 font-sans">إجمالي الرسوم: {totalFees} ج.م</span>
-
           </div>
 
 
@@ -674,17 +674,17 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
             <div className="text-right">
 
-              <span className="text-[10px] text-neutral-450 dark:text-slate-300 block pb-0.5">إجمالي المسدد</span>
+              <span className="text-[10px] text-neutral-450 dark:text-slate-300 block pb-0.5">المتبقي</span>
 
-              <span className="font-bold text-emerald-500 dark:text-emerald-400 font-mono text-sm">{totalPaid} ج.م</span>
+              <span className="font-bold text-amber-500 dark:text-amber-455 font-mono text-sm">{totalPending} ج.م</span>
 
             </div>
 
             <div className="text-left">
 
-              <span className="text-[10px] text-neutral-450 dark:text-slate-300 block pb-0.5 text-left font-sans">المتبقي أو المتأخر</span>
+              <span className="text-[10px] text-neutral-450 dark:text-slate-300 block pb-0.5 text-left font-sans">المتأخر</span>
 
-              <span className="font-bold text-rose-500 dark:text-rose-455 text-sm">{totalOutstanding} ج.م</span>
+              <span className="font-bold text-rose-500 dark:text-rose-455 text-sm">{totalOverdue} ج.م</span>
 
             </div>
 
@@ -696,55 +696,7 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
 
 
-      <div className="bg-white/80 backdrop-blur-md dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-850/60 p-4.5 rounded-3xl space-y-3 shadow-[0_4px_18px_rgba(15,23,42,0.02)]">
 
-        <div className="flex items-start gap-3">
-
-          <div className="p-2 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 shrink-0">
-
-            <Info className="w-4.5 h-4.5" />
-
-          </div>
-
-          <div className="space-y-1 text-right">
-
-            <h3 className="text-xs font-black text-slate-800 dark:text-zinc-150">تنبيه مهم</h3>
-
-            <p className="text-xs text-neutral-600 dark:text-slate-350 leading-relaxed">
-
-              هذه الصفحة تعرض حالة الرسوم فقط. لا يتوفر سداد إلكتروني داخل البوابة حالياً، ويتم تحديث الحالة بعد مراجعة الإدارة أو تأكيد السداد خارج البوابة.
-
-            </p>
-
-            {!isOnline && (
-
-              <div className="inline-flex items-center gap-1.5 text-[11px] text-rose-600 dark:text-rose-400 bg-rose-500/10 border border-rose-500/15 rounded-xl px-2.5 py-1 mt-1">
-
-                <WifiOff className="w-3.5 h-3.5" />
-
-                <span>أنت غير متصل الآن، وقد تتأخر آخر تحديثات الحالة.</span>
-
-              </div>
-
-            )}
-
-            {hasExpiringInvoice && (
-
-              <div className="inline-flex items-center gap-1.5 text-[11px] text-amber-700 dark:text-amber-300 bg-amber-500/10 border border-amber-500/15 rounded-xl px-2.5 py-1 mt-1">
-
-                <AlertTriangle className="w-3.5 h-3.5" />
-
-                <span>يوجد بند مستحق خلال أقل من 48 ساعة.</span>
-
-              </div>
-
-            )}
-
-          </div>
-
-        </div>
-
-      </div>
 
 
 
@@ -1008,7 +960,7 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
         {selectedInvoiceForInstructions && (
 
-          <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
 
             <motion.div
 
@@ -1032,15 +984,15 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
               ref={instructionsDialogRef}
 
-              initial={{ y: '100%' }}
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
 
-              animate={{ y: 0 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
 
-              exit={{ y: '100%' }}
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
 
-              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 260 }}
 
-              className="bg-white dark:bg-slate-900 rounded-t-[32px] border-t border-white/10 p-6 z-10 w-full space-y-4 max-h-[80%] overflow-y-auto select-none font-sans text-right"
+              className="bg-white dark:bg-slate-900 rounded-[28px] border border-white/10 p-6 z-10 w-full max-w-lg space-y-4 max-h-[85vh] overflow-y-auto select-none font-sans text-right"
 
               dir="rtl"
 
@@ -1056,7 +1008,7 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
             >
 
-              <div className="w-12 h-1 bg-gray-300 dark:bg-neutral-800 rounded-full mx-auto mb-2" />
+
 
 
 
@@ -1192,7 +1144,7 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
         {selectedInvoiceForPrint && (
 
-          <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
 
             <motion.div
 
@@ -1216,15 +1168,15 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
               ref={printDialogRef}
 
-              initial={{ y: '100%' }}
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
 
-              animate={{ y: 0 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
 
-              exit={{ y: '100%' }}
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
 
-              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 260 }}
 
-              className="bg-white dark:bg-slate-900 rounded-t-[32px] border-t border-white/10 p-6 z-10 w-full space-y-4 max-h-[80%] overflow-y-auto select-none font-sans text-right"
+              className="bg-white dark:bg-slate-900 rounded-[28px] border border-white/10 p-6 z-10 w-full max-w-lg space-y-4 max-h-[85vh] overflow-y-auto select-none font-sans text-right"
 
               dir="rtl"
 
@@ -1240,7 +1192,7 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
             >
 
-              <div className="w-12 h-1 bg-gray-300 dark:bg-neutral-800 rounded-full mx-auto mb-2" />
+
 
 
 

@@ -65,6 +65,7 @@ export interface GradeRecord {
   gpaWeight: number; // e.g. 4.0, 3.7
   passed: boolean;
   sourceExamId?: string;
+  examMode?: 'paper' | 'electronic';
 }
 
 export interface NotificationItem {

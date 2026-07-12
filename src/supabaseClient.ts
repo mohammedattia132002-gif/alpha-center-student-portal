@@ -109,6 +109,21 @@ function logPortalReadError(tableName: string, context: PortalReadDiagnosticCont
   });
 }
 
+function isMissingColumnError(error: unknown, columnName: string): boolean {
+  const record = error && typeof error === 'object' ? error as Record<string, unknown> : {};
+  return record.code === '42703' && String(record.message || '').includes(columnName);
+}
+
+function logPortalReadErrorUnlessMissingColumn(
+  tableName: string,
+  context: PortalReadDiagnosticContext,
+  error: unknown,
+  columnName: string,
+): void {
+  if (isMissingColumnError(error, columnName)) return;
+  logPortalReadError(tableName, context, error);
+}
+
 function logPortalEmptyRead(tableName: string, context: PortalReadDiagnosticContext): void {
   console.warn('[portal] Supabase read returned 0 rows. If desktop has data, check RLS tenant policies and sync status.', {
     table: tableName,
@@ -300,6 +315,21 @@ function safeUuid(value: unknown): string | null {
   return token || null;
 }
 
+const DAY_NAME_TO_WEEKDAY: Record<string, number> = {
+  sunday: 0,
+  monday: 1,
+  tuesday: 2,
+  wednesday: 3,
+  thursday: 4,
+  friday: 5,
+  saturday: 6,
+};
+
+function dayNameToWeekday(value: string): number {
+  const normalized = value.trim().toLowerCase();
+  return normalized in DAY_NAME_TO_WEEKDAY ? DAY_NAME_TO_WEEKDAY[normalized] : 0;
+}
+
 function getAttendanceSessionId(row: Record<string, any>): string | null {
   return safeUuid(row?.operational_session_id) || safeUuid(row?.session_id);
 }
@@ -313,6 +343,17 @@ function mergePaymentRecords(records: PaymentRecord[]): PaymentRecord[] {
   const seen = new Set<string>();
   return records.filter((record) => {
     const key = record.id || record.invoiceNo;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function mergeRowsById<T extends Record<string, any>>(records: T[]): T[] {
+  const seen = new Set<string>();
+  return records.filter((record) => {
+    const key = String(record.id || '').trim();
+    if (!key) return true;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -369,6 +410,27 @@ function mapGradeCategory(value: unknown): GradeRecord['category'] {
   if (token === 'practical') return 'practical';
   if (token === 'assignments' || token === 'assignment' || token === 'project') return 'assignments';
   return 'midterm';
+}
+
+function inferExamMode(row: Record<string, any>): GradeRecord['examMode'] {
+  const id = String(row.id || '').trim();
+  const teacherName = String(row.teacher_name || row.teacherName || '').trim().toLowerCase();
+  const remarks = String(row.remarks || '').trim().toLowerCase();
+  const deviceId = String(row.device_id || row.deviceId || '').trim().toLowerCase();
+
+  if (
+    id.startsWith('platform_result_') ||
+    teacherName === 'student portal' ||
+    deviceId === 'student-portal-web' ||
+    remarks.includes('student portal') ||
+    remarks.includes('platform') ||
+    remarks.includes('إلكتروني') ||
+    remarks.includes('منصة')
+  ) {
+    return 'electronic';
+  }
+
+  return 'paper';
 }
 
 function buildJoinReferenceCode(): string {
@@ -520,6 +582,35 @@ async function resolveStudentGroupSummary(client: any, studentId: string): Promi
     .maybeSingle();
 
   return groupRow || { id: groupId, grade_level: studentRow?.grade_level };
+}
+
+async function resolveStudentEnrollmentRows(client: any, studentId: string): Promise<Array<Record<string, any>>> {
+  try {
+    const data = await fetchRowsWithFallback<Record<string, any>>(
+      client,
+      'enrollments',
+      [
+        (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId).is('deleted_at', null),
+        (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId),
+        (query) => query.eq('student_id', studentId).is('deleted_at', null),
+        (query) => query.eq('student_id', studentId),
+      ],
+      {
+        orderVariants: [['updated_at'], ['created_at'], []],
+        continueOnEmpty: true,
+        diagnosticContext: { studentId, relation: 'attendance-enrollments' },
+      },
+    );
+
+    return mergeRowsById(data).filter((row) => {
+      if (row?.deleted_at) return false;
+      if (row?.is_active === false) return false;
+      return true;
+    });
+  } catch (error) {
+    logPortalReadError('attendance', { studentId, relation: 'attendance-enrollments' }, error);
+    return [];
+  }
 }
 
 type PortalExamStudent = Pick<
@@ -861,31 +952,58 @@ export const dbAdapter = {
         return [];
       }
 
-      const { data, error } = await client
-        .from('group_times')
-        .select('id, weekday, start_time, end_time, room, teacher_name')
-        .eq('group_id', groupId)
-        .eq('is_active', true)
-        .is('deleted_at', null)
-        .order('weekday', { ascending: true })
-        .order('start_time', { ascending: true });
+      const columnSchemas: Array<{
+        weekdayCol: string;
+        teacherCol: string;
+        dayMap?: (v: string) => number;
+      }> = [
+        { weekdayCol: 'weekday', teacherCol: 'teacher_name' },
+        { weekdayCol: 'day', teacherCol: 'teacher', dayMap: dayNameToWeekday },
+      ];
 
-      if (error) {
-        logPortalReadError('groupTimes', { studentId, groupId }, error);
-        recordPortalDataRead('groupTimes', 'live');
-        return [];
+      let result: GroupTimeSlot[] | null = null;
+      for (const schema of columnSchemas) {
+        const { data, error } = await client
+          .from('group_times')
+          .select(`id, ${schema.weekdayCol}, start_time, end_time, room, ${schema.teacherCol}`)
+          .eq('tenant_id', PORTAL_TENANT_ID)
+          .eq('group_id', groupId)
+          .eq('is_active', true)
+          .is('deleted_at', null)
+          .order(schema.weekdayCol, { ascending: true })
+          .order('start_time', { ascending: true });
+
+        if (error) {
+          const errMsg = String(error?.message || error?.code || '').toLowerCase();
+          if (errMsg.includes('does not exist') || errMsg.includes('42703') || errMsg.includes('column') || errMsg.includes('not found')) {
+            continue;
+          }
+          logPortalReadError('groupTimes', { studentId, groupId, schema: schema.weekdayCol }, error);
+          break;
+        }
+
+        if (Array.isArray(data) && data.length > 0) {
+          result = data.map((row: any) => ({
+            id: String(row.id),
+            weekday: schema.dayMap
+              ? schema.dayMap(String(row[schema.weekdayCol] || ''))
+              : Number(row[schema.weekdayCol]),
+            startTime: String(row.start_time || ''),
+            endTime: String(row.end_time || ''),
+            room: String(row.room || ''),
+            teacherName: String(row[schema.teacherCol] || ''),
+          })).sort((left, right) => {
+            if (left.weekday !== right.weekday) return left.weekday - right.weekday;
+            return left.startTime.localeCompare(right.startTime);
+          });
+          break;
+        }
+        result = [];
       }
 
-      if (Array.isArray(data) && data.length > 0) {
+      if (result !== null) {
         recordPortalDataRead('groupTimes', 'live');
-        return data.map((row: any) => ({
-          id: String(row.id),
-          weekday: Number(row.weekday),
-          startTime: String(row.start_time || ''),
-          endTime: String(row.end_time || ''),
-          room: String(row.room || ''),
-          teacherName: String(row.teacher_name || ''),
-        }));
+        return result;
       }
     } catch (e) {
       logPortalReadError('groupTimes', { studentId }, e);
@@ -947,22 +1065,42 @@ export const dbAdapter = {
     if (isSupabaseConfigured()) {
       const client = getSupabase();
       try {
+        const enrollmentRows = await resolveStudentEnrollmentRows(client, studentId);
+        const enrollmentIds = enrollmentRows
+          .map((row) => safeUuid(row?.id))
+          .filter((value): value is string => Boolean(value));
+        const enrollmentMap = new Map(enrollmentRows.map((row) => [String(row.id), row]));
         const attendanceQueryVariants: Array<(query: any) => any> = [
           (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId).is('deleted_at', null),
-          (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId),
           (query) => query.eq('student_id', studentId).is('deleted_at', null),
-          (query) => query.eq('student_id', studentId),
         ];
+        if (enrollmentIds.length > 0) {
+          attendanceQueryVariants.push((query) =>
+            query.eq('tenant_id', PORTAL_TENANT_ID).in('enrollment_id', enrollmentIds).is('deleted_at', null),
+          );
+          attendanceQueryVariants.push((query) => query.in('enrollment_id', enrollmentIds).is('deleted_at', null));
+        }
 
-        const data = await fetchRowsWithFallback<Record<string, any>>(
-          client,
-          'attendance',
-          attendanceQueryVariants,
-          {
-            orderVariants: [['date'], ['recorded_at'], ['created_at'], []],
-            continueOnEmpty: true,
-            diagnosticContext: { studentId },
-          },
+        const data = mergeRowsById(
+          (
+            await Promise.all(
+              attendanceQueryVariants.map((configure) =>
+                fetchRowsWithFallback<Record<string, any>>(
+                  client,
+                  'attendance',
+                  [configure],
+                  {
+                    orderVariants: [['attendance_date'], ['date'], ['recorded_at'], ['created_at'], []],
+                    continueOnEmpty: false,
+                    diagnosticContext: { studentId },
+                  },
+                ).catch((error) => {
+                  logPortalReadErrorUnlessMissingColumn('attendance', { studentId }, error, 'enrollment_id');
+                  return [] as Record<string, any>[];
+                }),
+              ),
+            )
+          ).flat(),
         );
 
         if (Array.isArray(data)) {
@@ -973,6 +1111,7 @@ export const dbAdapter = {
               [
                 ...sessionRows.map((row: any) => safeUuid(row?.group_id)),
                 ...data.map((row: any) => safeUuid(row?.group_id)),
+                ...data.map((row: any) => safeUuid(enrollmentMap.get(String(row.enrollment_id || ''))?.group_id)),
                 safeUuid(fallbackGroup?.id),
               ].filter((value): value is string => Boolean(value)),
             ),
@@ -990,7 +1129,8 @@ export const dbAdapter = {
 
           supabaseRecords = data.map((row: any) => {
             const session = sessionMap.get(String(getAttendanceSessionId(row) || ''));
-            const group = groupMap.get(String(session?.group_id || row.group_id || fallbackGroup?.id || ''));
+            const enrollment = enrollmentMap.get(String(row.enrollment_id || ''));
+            const group = groupMap.get(String(session?.group_id || row.group_id || enrollment?.group_id || fallbackGroup?.id || ''));
             const metadataName =
               typeof session?.metadata === 'object' && session?.metadata
                 ? String((session.metadata as Record<string, unknown>).title || (session.metadata as Record<string, unknown>).name || '')
@@ -1161,6 +1301,7 @@ export const dbAdapter = {
             gpaWeight: percentageToGpa(Number(row.percentage || 0)),
             passed: Number(row.percentage || 0) >= 60,
             sourceExamId: String(row.assessment_id || '').trim() || undefined,
+            examMode: inferExamMode(row),
           }));
         }
       } catch (e) {

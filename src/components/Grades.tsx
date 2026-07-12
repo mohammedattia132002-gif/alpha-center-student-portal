@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
-import { GradeRecord } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { GradeRecord, Exam } from '../types';
 import { 
   Award, TrendingUp, Sparkles, BookOpen, Search, ArrowUpRight, 
   HelpCircle, ChevronRight, Share2, Compass, Sliders, ChevronDown, 
@@ -17,9 +17,10 @@ import { formatArabicDate } from '../utils/arabicFormat';
 
 interface GradesProps {
   records: GradeRecord[];
+  exams: Exam[];
 }
 
-export default function Grades({ records }: GradesProps) {
+export default function Grades({ records, exams }: GradesProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all' | 'exam' | 'final' | 'project'>('all');
   const [isLoading, setIsLoading] = useState(false);
@@ -34,6 +35,14 @@ export default function Grades({ records }: GradesProps) {
   // Compute stats
   const totalWeightPoints = records.reduce((acc, r) => acc + (r.gpaWeight || 0), 0);
   const averageGPA = records.length > 0 ? (totalWeightPoints / records.length).toFixed(2) : "—";
+
+  const questionCountByExam = useMemo(() => {
+    const map: Record<string, number> = {};
+    exams.forEach((exam) => {
+      map[exam.id] = exam.questionsCount;
+    });
+    return map;
+  }, [exams]);
 
   // Filter records
   const filteredGrades = records.filter(grade => {
@@ -63,6 +72,14 @@ export default function Grades({ records }: GradesProps) {
       return 'bg-rose-500/10 text-rose-600 dark:text-rose-450 border-rose-500/15';
     }
   };
+
+  const getExamModeLabel = (grade: GradeRecord) =>
+    grade.examMode === 'electronic' ? 'إلكتروني' : 'ورقي / يدوي';
+
+  const getExamModeStyle = (grade: GradeRecord) =>
+    grade.examMode === 'electronic'
+      ? 'bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/15'
+      : 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/15';
 
   const playInteractionTap = () => playPortalTap(700);
 
@@ -237,7 +254,12 @@ export default function Grades({ records }: GradesProps) {
                 <div className="flex justify-between items-start">
                   <div className="text-right">
                     <h4 className="text-xs font-black text-slate-800 dark:text-zinc-150 group-hover:text-indigo-650 dark:group-hover:text-indigo-400 transition-colors">امتحان يوم {formatArabicDate(grade.date)}</h4>
-                    <span className="text-[10px] text-neutral-400 block mt-1 font-sans">{grade.subjectCode} • {formatArabicDate(grade.date)}</span>
+                    <div className="mt-1 flex flex-wrap items-center justify-end gap-2">
+                      <span className="text-[10px] text-neutral-400 font-sans">{grade.subjectCode} • {formatArabicDate(grade.date)}</span>
+                      <span className={`rounded-full border px-2 py-0.5 text-[9px] font-black ${getExamModeStyle(grade)}`}>
+                        {getExamModeLabel(grade)}
+                      </span>
+                    </div>
                   </div>
 
                   <span className={`w-11 h-11 rounded-xl font-sans font-black text-base flex items-center justify-center border shrink-0 shadow-sm ${getLetterBadgeStyle(grade.gradeLetter)}`}>
@@ -248,7 +270,7 @@ export default function Grades({ records }: GradesProps) {
                 {/* Score slider metrics */}
                 <div className="space-y-1.5 pt-1">
                   <div className="flex justify-between items-center text-[10px] text-slate-400 dark:text-slate-300 font-sans">
-                    <span>العلامة المحصلة: <strong className="text-slate-800 dark:text-white font-mono font-black">{grade.score} / {grade.maxScore}</strong></span>
+                    <span>العلامة المحصلة: <strong className="text-slate-800 dark:text-white font-mono font-black">{grade.sourceExamId ? (questionCountByExam[grade.sourceExamId] ?? '—') : '—'} سؤال</strong></span>
                     <span>الوزن الأكاديمي: {grade.gpaWeight} pts</span>
                   </div>
 

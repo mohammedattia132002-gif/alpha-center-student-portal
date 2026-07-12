@@ -8383,144 +8383,158 @@
     },
     "attendance": [
       {
+        "id": "e092366b-dc87-45a5-af7b-01159b00b5e5",
+        "date": "2026-07-12",
+        "status": "absent",
+        "check_in_time": "18:17",
+        "session_name": "?????"
+      },
+      {
+        "id": "a7322283-48b8-47b6-990d-7bf7079e3ab6",
+        "date": "2026-05-29",
+        "status": "pending",
+        "check_in_time": "",
+        "session_name": "?????"
+      },
+      {
         "id": "f79443d7-d0b3-4d1a-a2c8-a9963a38a199",
         "date": "2026-05-22",
         "status": "absent",
-        "check_in_time": "00:50",
-        "session_name": "الحصة"
+        "check_in_time": "21:50",
+        "session_name": "?????"
       },
       {
         "id": "52b21822-4614-4839-a784-ede1a0700747",
         "date": "2026-05-17",
         "status": "present",
-        "check_in_time": "17:11",
-        "session_name": "الحصة"
+        "check_in_time": "14:11",
+        "session_name": "?????"
       },
       {
         "id": "71169fe2-8975-444e-867a-4291239037e8",
         "date": "2026-05-12",
         "status": "present",
-        "check_in_time": "17:01",
-        "session_name": "الحصة"
+        "check_in_time": "14:01",
+        "session_name": "?????"
       },
       {
         "id": "67acce38-9e66-4199-8bef-23cec34c3eae",
         "date": "2026-05-10",
         "status": "present",
-        "check_in_time": "17:19",
-        "session_name": "الحصة"
+        "check_in_time": "14:19",
+        "session_name": "?????"
       },
       {
         "id": "643730b9-d26f-44a0-b5e7-76c764619bf8",
         "date": "2026-05-07",
         "status": "present",
-        "check_in_time": "17:17",
-        "session_name": "الحصة"
+        "check_in_time": "14:17",
+        "session_name": "?????"
       },
       {
         "id": "cd9fc732-b8fd-4629-8eb0-61ab0f54ba00",
         "date": "2026-05-05",
         "status": "absent",
-        "check_in_time": "17:30",
-        "session_name": "الحصة"
+        "check_in_time": "14:30",
+        "session_name": "?????"
       },
       {
         "id": "ea396e12-2e25-4de3-a47e-3635bef20809",
         "date": "2026-05-03",
         "status": "present",
-        "check_in_time": "17:16",
-        "session_name": "الحصة"
+        "check_in_time": "14:16",
+        "session_name": "?????"
       },
       {
         "id": "ca4c404c-8f1a-4819-8d28-c190f9a9728d",
         "date": "2026-04-30",
         "status": "present",
-        "check_in_time": "17:09",
-        "session_name": "الحصة"
+        "check_in_time": "14:09",
+        "session_name": "?????"
       },
       {
         "id": "7fa64635-d647-46fc-9da7-98c4668a6afe",
         "date": "2026-04-28",
         "status": "present",
-        "check_in_time": "17:16",
-        "session_name": "الحصة"
+        "check_in_time": "14:16",
+        "session_name": "?????"
       },
       {
         "id": "fda26af8-32d4-4626-92e4-553922a1f444",
         "date": "2026-04-26",
         "status": "present",
-        "check_in_time": "17:01",
-        "session_name": "الحصة"
+        "check_in_time": "14:01",
+        "session_name": "?????"
       },
       {
         "id": "e10f3a1f-91fe-4bed-b7a0-c2fb6f643681",
         "date": "2026-04-23",
         "status": "present",
-        "check_in_time": "17:10",
-        "session_name": "الحصة"
+        "check_in_time": "15:10",
+        "session_name": "?????"
       },
       {
         "id": "99e935e9-b826-4cc5-8574-8cc6bcd9343b",
         "date": "2026-04-21",
         "status": "present",
-        "check_in_time": "17:12",
-        "session_name": "الحصة"
+        "check_in_time": "15:12",
+        "session_name": "?????"
       },
       {
         "id": "d607ffaf-f9d5-433d-aa04-858c5cf347b0",
         "date": "2026-04-19",
         "status": "present",
-        "check_in_time": "17:08",
-        "session_name": "الحصة"
+        "check_in_time": "15:08",
+        "session_name": "?????"
       },
       {
         "id": "8ffdd08f-1a96-4ec1-91e5-79ba18126c15",
         "date": "2026-04-16",
         "status": "present",
-        "check_in_time": "17:28",
-        "session_name": "الحصة"
+        "check_in_time": "15:28",
+        "session_name": "?????"
       },
       {
         "id": "f94889a0-b9f8-4dec-8e2c-1e9421c9da0f",
         "date": "2026-04-14",
         "status": "present",
-        "check_in_time": "17:25",
-        "session_name": "الحصة"
+        "check_in_time": "15:25",
+        "session_name": "?????"
       },
       {
         "id": "2052b089-8ec1-44db-aaf2-6d6797307214",
         "date": "2026-04-12",
         "status": "present",
-        "check_in_time": "17:07",
-        "session_name": "الحصة"
+        "check_in_time": "15:07",
+        "session_name": "?????"
       },
       {
         "id": "5e9dc1ec-aca3-4d12-8125-ca4356a50309",
         "date": "2026-04-09",
         "status": "present",
-        "check_in_time": "17:14",
-        "session_name": "الحصة"
+        "check_in_time": "15:14",
+        "session_name": "?????"
       },
       {
         "id": "b62ec118-5d45-41bc-bd1c-fac01fede01a",
         "date": "2026-04-07",
         "status": "absent",
-        "check_in_time": "17:30",
-        "session_name": "الحصة"
+        "check_in_time": "15:30",
+        "session_name": "?????"
       },
       {
         "id": "be32113c-0717-4b55-b316-e48144082e5e",
         "date": "2026-04-05",
         "status": "present",
-        "check_in_time": "17:17",
-        "session_name": "الحصة"
+        "check_in_time": "15:17",
+        "session_name": "?????"
       },
       {
         "id": "20619bff-8b5e-424f-88d9-cd2dd07aee60",
         "date": "2026-04-02",
         "status": "present",
-        "check_in_time": "17:08",
-        "session_name": "الحصة"
+        "check_in_time": "15:08",
+        "session_name": "?????"
       }
     ],
     "payments": [
