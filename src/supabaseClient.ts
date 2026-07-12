@@ -319,12 +319,6 @@ function buildJoinReferenceCode(): string {
   return `JR-${Date.now().toString(36).toUpperCase()}`;
 }
 
-function settledValue<T>(result: PromiseSettledResult<T>, fallback: T): T {
-  if (result.status === 'fulfilled') return result.value;
-  console.warn('[portal] optional Supabase read failed:', result.reason);
-  return fallback;
-}
-
 function isFulfilled<T>(result: PromiseSettledResult<T>): result is PromiseFulfilledResult<T> {
   return result.status === 'fulfilled';
 }
@@ -360,28 +354,6 @@ async function fetchRowsWithFallback<T = any>(
   if (emptyResult) return emptyResult;
   if (lastError) throw lastError;
   return [];
-}
-
-async function getStudentEnrollmentIds(client: any, studentId: string): Promise<string[]> {
-  try {
-    const rows = await fetchRowsWithFallback<Record<string, any>>(
-      client,
-      'enrollments',
-      [
-        (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId).is('deleted_at', null),
-        (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId),
-        (query) => query.eq('student_id', studentId).is('deleted_at', null),
-        (query) => query.eq('student_id', studentId),
-      ],
-      [['updated_at'], ['created_at'], []],
-      true,
-    );
-
-    return Array.from(new Set(rows.map((row) => safeUuid(row?.id)).filter((value): value is string => Boolean(value))));
-  } catch (error) {
-    console.warn('[portal] optional enrollment lookup failed:', error);
-    return [];
-  }
 }
 
 // app_settings.setting_value is a JSON column. The desktop stores plain scalar strings,
@@ -710,26 +682,13 @@ export const dbAdapter = {
 
     const client = getSupabase();
     try {
-      let { data, error } = await client
-          .from('groups')
-          .select('id,name,grade_level,is_active,portal_join_enabled')
-          .eq('tenant_id', PORTAL_TENANT_ID)
-          .eq('is_active', true)
-          .eq('portal_join_enabled', true)
-          .is('deleted_at', null)
-          .order('name', { ascending: true });
-
-      if (error && String(error.message || '').includes('portal_join_enabled')) {
-        const fallback = await client
-          .from('groups')
-          .select('id,name,grade_level,is_active')
-          .eq('tenant_id', PORTAL_TENANT_ID)
-          .eq('is_active', true)
-          .is('deleted_at', null)
-          .order('name', { ascending: true });
-        data = fallback.data;
-        error = fallback.error;
-      }
+      const { data, error } = await client
+        .from('groups')
+        .select('id,name,grade_level,is_active')
+        .eq('tenant_id', PORTAL_TENANT_ID)
+        .eq('is_active', true)
+        .is('deleted_at', null)
+        .order('name', { ascending: true });
 
       if (!error && Array.isArray(data) && data.length > 0) {
         return data
@@ -916,6 +875,7 @@ export const dbAdapter = {
       try {
         let paymentRows: Record<string, any>[] = [];
         let ledgerRows: Record<string, any>[] = [];
+        const shouldReadLegacyLedger = (import.meta as any).env?.VITE_ENABLE_LEGACY_LEDGER_READ === 'true';
 
         try {
           paymentRows = await fetchRowsWithFallback<Record<string, any>>(
@@ -975,21 +935,23 @@ export const dbAdapter = {
           };
         };
 
-        try {
-          ledgerRows = await fetchRowsWithFallback<Record<string, any>>(
-            client,
-            'financial_ledger',
-            [
-              (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId).eq('reference_type', 'payment').eq('entry_type', 'debit').is('deleted_at', null),
-              (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId).eq('reference_type', 'payment').eq('entry_type', 'debit'),
-              (query) => query.eq('student_id', studentId).eq('reference_type', 'payment').eq('entry_type', 'debit').is('deleted_at', null),
-              (query) => query.eq('student_id', studentId).eq('reference_type', 'payment').eq('entry_type', 'debit'),
-            ],
-            [['created_at'], []],
-            true,
-          );
-        } catch (error) {
-          console.warn('[portal] optional ledger payment read failed:', error);
+        if (shouldReadLegacyLedger) {
+          try {
+            ledgerRows = await fetchRowsWithFallback<Record<string, any>>(
+              client,
+              'financial_ledger',
+              [
+                (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId).eq('reference_type', 'payment').eq('entry_type', 'debit').is('deleted_at', null),
+                (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId).eq('reference_type', 'payment').eq('entry_type', 'debit'),
+                (query) => query.eq('student_id', studentId).eq('reference_type', 'payment').eq('entry_type', 'debit').is('deleted_at', null),
+                (query) => query.eq('student_id', studentId).eq('reference_type', 'payment').eq('entry_type', 'debit'),
+              ],
+              [['created_at'], []],
+              true,
+            );
+          } catch (error) {
+            console.warn('[portal] optional ledger payment read failed:', error);
+          }
         }
 
         const knownPayments = new Map(paymentRows.map((row) => [String(row.id), row]));
@@ -1300,7 +1262,6 @@ export const dbAdapter = {
         const platformExamRows = await fetchAllRows(client, 'platform_exams', (query) => query
           .eq('tenant_id', PORTAL_TENANT_ID)
           .eq('active', true)
-          .is('deleted_at', null)
           .order('created_at', { ascending: false }));
 
         if (Array.isArray(platformExamRows) && platformExamRows.length > 0) {
@@ -1341,7 +1302,6 @@ export const dbAdapter = {
             visibleExamRows.map(async (exam: any) => {
               const platformQuestionRows = await fetchAllRows(client, 'platform_questions', (query) => query
                 .eq('exam_id', exam.id)
-                .is('deleted_at', null)
                 .order('order_index', { ascending: true }));
 
               if (!Array.isArray(platformQuestionRows)) {
@@ -1352,7 +1312,6 @@ export const dbAdapter = {
                 platformQuestionRows.map(async (question: any): Promise<ExamQuestion> => {
                   const platformChoiceRows = await fetchAllRows(client, 'platform_choices', (query) => query
                     .eq('question_id', question.id)
-                    .is('deleted_at', null)
                     .order('order_index', { ascending: true }));
 
                   if (!Array.isArray(platformChoiceRows)) {
