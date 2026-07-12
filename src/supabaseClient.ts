@@ -44,6 +44,7 @@ export type PortalDataReadKey = 'profile' | 'attendance' | 'payments' | 'grades'
 export type PortalDataReadSource = 'live';
 export type PortalJoinFieldKey =
   | 'student_name'
+  | 'student_code'
   | 'parent_phone'
   | 'student_phone'
   | 'academic_stage'
@@ -135,6 +136,7 @@ function logPortalEmptyRead(tableName: string, context: PortalReadDiagnosticCont
 export const DEFAULT_PORTAL_JOIN_SETTINGS: PortalJoinSettings = {
   fields: {
     student_name: { visible: true, required: true },
+    student_code: { visible: true, required: false },
     parent_phone: { visible: true, required: true },
     student_phone: { visible: true, required: false },
     academic_stage: { visible: true, required: true },
@@ -1016,6 +1018,7 @@ export const dbAdapter = {
   // Insert Join Request
   async createJoinRequest(request: {
     studentName: string;
+    studentCode?: string;
     parentPhone: string;
     studentPhone: string;
     academicStage: string;
@@ -1029,6 +1032,14 @@ export const dbAdapter = {
 
     const client = getSupabase();
     try {
+      const studentCode = String(request.studentCode || '').trim();
+      const note = [
+        request.gender.trim() ? `النوع: ${request.gender.trim()}` : '',
+        studentCode ? `كود الطالب: ${studentCode}` : '',
+      ]
+        .filter(Boolean)
+        .join('\n') || null;
+
       const { error } = await client.from('join_requests').insert({
         reference_code: buildJoinReferenceCode(),
         student_name: request.studentName.trim(),
@@ -1037,7 +1048,7 @@ export const dbAdapter = {
         academic_stage: request.academicStage.trim(),
         academic_grade: request.grade.trim(),
         desired_group: request.academicGroup.trim() || 'غير محدد',
-        note: request.gender.trim() ? `النوع: ${request.gender.trim()}` : null,
+        note,
         status: 'pending',
         created_at: nowIso(),
         updated_at: nowIso(),

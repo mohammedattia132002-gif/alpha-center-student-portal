@@ -12,6 +12,7 @@ import studentSnapshots from '../../data/student-snapshots.json';
 
 interface JoinRequestPayload {
   student_name: string;
+  student_code?: string;
   phone?: string;
   parent_phone: string;
   grade: string;
@@ -154,6 +155,7 @@ export interface PortalGroupOption {
 
 export type PortalJoinFieldKey =
   | 'student_name'
+  | 'student_code'
   | 'parent_phone'
   | 'student_phone'
   | 'academic_stage'
@@ -243,6 +245,7 @@ export async function payInvoice(invoiceId: string, _amount?: number): Promise<{
 export async function submitJoinRequest(request: JoinRequestPayload): Promise<JoinRequestResponse> {
   await dbAdapter.createJoinRequest({
     studentName: request.student_name,
+    studentCode: request.student_code || '',
     parentPhone: request.parent_phone || request.phone || '',
     studentPhone: request.phone || '',
     academicStage: request.academic_stage || 'المرحلة الثانوية',

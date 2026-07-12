@@ -13,7 +13,7 @@ import {
   PortalJoinFieldKey,
   PortalJoinSettings,
 } from '../lib/workersApi';
-import { ArrowRight, CheckCircle2, AlertCircle, Sparkles, Phone, User, BookOpen, Layers, Users, Wifi } from 'lucide-react';
+import { ArrowRight, CheckCircle2, AlertCircle, Sparkles, Phone, User, BookOpen, Layers, Users, Wifi, Hash } from 'lucide-react';
 import { StudentProfile, CenterConfig } from '../types';
 
 interface AuthScreensProps {
@@ -48,6 +48,7 @@ const DEFAULT_GENDER = 'ذكر';
 const DEFAULT_JOIN_SETTINGS: PortalJoinSettings = {
   fields: {
     student_name: { visible: true, required: true },
+    student_code: { visible: true, required: false },
     parent_phone: { visible: true, required: true },
     student_phone: { visible: true, required: false },
     academic_stage: { visible: true, required: true },
@@ -87,6 +88,7 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
 
   // Join Request Form States
   const [studentName, setStudentName] = useState('');
+  const [joinStudentCode, setJoinStudentCode] = useState('');
   const [parentPhone, setParentPhone] = useState('');
   const [studentPhone, setStudentPhone] = useState('');
   const [academicStage, setAcademicStage] = useState(DEFAULT_ACADEMIC_STAGE);
@@ -201,10 +203,11 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
 
   useEffect(() => {
     if (!showJoinField('student_name') && studentName) setStudentName('');
+    if (!showJoinField('student_code') && joinStudentCode) setJoinStudentCode('');
     if (!showJoinField('parent_phone') && parentPhone) setParentPhone('');
     if (!showJoinField('student_phone') && studentPhone) setStudentPhone('');
     if (!showJoinField('academic_group') && academicGroup) setAcademicGroup('');
-  }, [academicGroup, joinSettings, parentPhone, studentName, studentPhone]);
+  }, [academicGroup, joinSettings, joinStudentCode, parentPhone, studentName, studentPhone]);
 
   const openView = (nextView: 'login' | 'join') => {
     setView(nextView);
@@ -249,6 +252,7 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
 
       if (
         (activeRequireJoinField('student_name') && !studentName.trim()) ||
+        (activeRequireJoinField('student_code') && !joinStudentCode.trim()) ||
         (activeRequireJoinField('parent_phone') && !parentPhone.trim()) ||
         (activeRequireJoinField('student_phone') && !studentPhone.trim()) ||
         (activeRequireJoinField('academic_stage') && !academicStage.trim()) ||
@@ -261,6 +265,7 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
 
       const apiRes = await submitJoinRequest({
         student_name: studentName || 'طالب جديد',
+        student_code: activeShowJoinField('student_code') ? joinStudentCode.trim() : '',
         phone: activeShowJoinField('student_phone') ? (studentPhone || parentPhone || 'غير محدد') : (parentPhone || studentPhone || 'غير محدد'),
         parent_phone: activeShowJoinField('parent_phone') ? (parentPhone || studentPhone || 'غير محدد') : (studentPhone || parentPhone || 'غير محدد'),
         grade: activeShowJoinField('grade') ? grade : 'غير محدد',
@@ -271,6 +276,7 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
       if (apiRes.success) {
         setJoinSuccessMsg('تم تسجيل وإرسال طلب الانضمام بنجاح وسيتواصل معكم فريق القبول قريباً.');
         setStudentName('');
+        setJoinStudentCode('');
         setParentPhone('');
         setStudentPhone('');
         setAcademicStage(DEFAULT_ACADEMIC_STAGE);
@@ -326,8 +332,8 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
             <div className="p-3 bg-indigo-500/5 dark:bg-slate-900/45 border border-indigo-500/10 dark:border-slate-800 rounded-2xl flex items-center justify-between text-right mt-2">
               <span className="text-[10px] text-indigo-650 dark:text-indigo-400 font-bold">الدعم الأكاديمي المباشر</span>
               <a href={`tel:${centerConfig.phoneNumber}`} className="text-xs font-black text-indigo-650 dark:text-indigo-400 font-mono flex items-center gap-1">
-                <Phone className="w-3.5 h-3.5" />
                 <span>{centerConfig.phoneNumber}</span>
+                <Phone className="w-3.5 h-3.5" />
               </a>
             </div>
           </div>
@@ -541,6 +547,29 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
                         aria-describedby={joinErrorMsg ? 'join-error-message' : joinSuccessMsg ? 'join-success-message' : undefined}
                       />
                       <User className="w-3.5 h-3.5 text-slate-505 absolute top-3.5 right-3.5" />
+                    </div>
+                  </div>
+
+                  {/* Student Code */}
+                  <div hidden={!showJoinField('student_code')} className="space-y-1 text-right">
+                    <label htmlFor="join-student-code" className="text-[11px] font-bold text-text-secondary">
+                      كود الطالب {requireJoinField('student_code') ? <span className="text-rose-500">*</span> : null}
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="join-student-code"
+                        type="text"
+                        name="student-code"
+                        required={requireJoinField('student_code')}
+                        value={joinStudentCode}
+                        onChange={(e) => setJoinStudentCode(e.target.value)}
+                        autoComplete="off"
+                        placeholder="مثال: 2026110904"
+                        className="w-full h-10 pr-10 pl-3 rounded-xl bg-neutral-50 dark:bg-slate-950/60 text-text-primary border border-neutral-200 dark:border-slate-800 focus:border-indigo-505 transition-all text-xs font-mono text-right"
+                        aria-invalid={Boolean(joinErrorMsg)}
+                        aria-describedby={joinErrorMsg ? 'join-error-message' : joinSuccessMsg ? 'join-success-message' : undefined}
+                      />
+                      <Hash className="w-3.5 h-3.5 text-slate-505 absolute top-3.5 right-3.5" />
                     </div>
                   </div>
 
