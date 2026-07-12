@@ -15,6 +15,26 @@ const PORTAL_TENANT_ID =
   (import.meta as any).env?.VITE_DEV_BYPASS_TENANT_ID ||
   'af975d96-5310-48b8-a5df-f88518ef0557';
 const PORTAL_DEVICE_ID = 'student-portal-web';
+const PLATFORM_EXAM_ASSETS_BUCKET = 'secure-files';
+const PLATFORM_QUESTION_SELECT_COLUMNS = [
+  'id',
+  'exam_id',
+  'question_text',
+  'points',
+  'order_index',
+  'question_type',
+  'page_number',
+  'image_url',
+  'image_storage_path',
+  'deleted_at',
+].join(',');
+const PLATFORM_CHOICE_SELECT_COLUMNS = [
+  'id',
+  'question_id',
+  'choice_text',
+  'order_index',
+  'deleted_at',
+].join(',');
 const DEFAULT_AVATAR =
   'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=256&h=256&auto=format&fit=crop';
 
@@ -563,6 +583,45 @@ function readPlatformQuestionType(question: Record<string, any>, choicesCount: n
   if (rawType === 'numeric') return 'numeric';
   if (rawType === 'mcq' || rawType === 'multiple_choice') return 'mcq';
   return choicesCount > 0 ? 'mcq' : 'numeric';
+}
+
+function readDirectQuestionImageUrl(question: Record<string, any>): string {
+  const rawUrl = String(question.image_url || '').trim();
+  if (/^https?:\/\//i.test(rawUrl) || /^data:image\//i.test(rawUrl)) return rawUrl;
+  return '';
+}
+
+function readQuestionImageStoragePath(question: Record<string, any>): string {
+  const storagePath = String(question.image_storage_path || '').trim();
+  if (storagePath) return storagePath;
+
+  const legacyImageUrl = String(question.image_url || '').trim();
+  return legacyImageUrl.startsWith('platform-exams/') ? legacyImageUrl : '';
+}
+
+async function resolvePlatformQuestionImage(
+  client: any,
+  question: Record<string, any>,
+): Promise<{ imageUrl?: string; imageStoragePath?: string }> {
+  const imageStoragePath = readQuestionImageStoragePath(question);
+  const directImageUrl = readDirectQuestionImageUrl(question);
+  if (directImageUrl) return { imageUrl: directImageUrl, imageStoragePath: imageStoragePath || undefined };
+  if (!imageStoragePath) return {};
+
+  const { data, error } = await client
+    .storage
+    .from(PLATFORM_EXAM_ASSETS_BUCKET)
+    .createSignedUrl(imageStoragePath, 60 * 60);
+
+  if (error) {
+    console.warn('[portal] platform question image signing failed:', error);
+    return { imageStoragePath };
+  }
+
+  return {
+    imageUrl: String(data?.signedUrl || '').trim() || undefined,
+    imageStoragePath,
+  };
 }
 
 async function buildStudentProfile(client: any, studentRow: Record<string, any>): Promise<StudentProfile> {
@@ -1298,7 +1357,7 @@ export const dbAdapter = {
             visibleExamRows.map(async (exam: any) => {
               const platformQuestionRows = await fetchAllRows(client, 'platform_questions', (query) => query
                 .eq('exam_id', exam.id)
-                .order('order_index', { ascending: true }));
+                .order('order_index', { ascending: true }), undefined, PLATFORM_QUESTION_SELECT_COLUMNS);
 
               if (!Array.isArray(platformQuestionRows)) {
                 throw new Error('platform_questions_invalid_response');
@@ -1308,7 +1367,7 @@ export const dbAdapter = {
                 platformQuestionRows.map(async (question: any): Promise<ExamQuestion> => {
                   const platformChoiceRows = await fetchAllRows(client, 'platform_choices', (query) => query
                     .eq('question_id', question.id)
-                    .order('order_index', { ascending: true }));
+                    .order('order_index', { ascending: true }), undefined, PLATFORM_CHOICE_SELECT_COLUMNS);
 
                   if (!Array.isArray(platformChoiceRows)) {
                     throw new Error('platform_choices_invalid_response');
@@ -1318,6 +1377,7 @@ export const dbAdapter = {
                     id: String(choice.id || ''),
                     text: String(choice.choice_text || '').trim(),
                   }));
+                  const questionImage = await resolvePlatformQuestionImage(client, question);
 
                   return {
                     id: String(question.id || ''),
@@ -1326,6 +1386,8 @@ export const dbAdapter = {
                     points: Number(question.points || 1),
                     questionType: readPlatformQuestionType(question, choices.length),
                     pageNumber: Number(question.page_number || 0) || undefined,
+                    imageUrl: questionImage.imageUrl,
+                    imageStoragePath: questionImage.imageStoragePath,
                   };
                 }),
               );

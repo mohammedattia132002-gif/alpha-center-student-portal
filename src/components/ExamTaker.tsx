@@ -33,6 +33,9 @@ interface Confetti {
 const isNumericQuestion = (question: ExamQuestion): boolean =>
   question.questionType === 'numeric' || question.options.length === 0;
 
+const isGeneratedPdfQuestionText = (text: string | undefined): boolean =>
+  /^Question page \d+$/i.test(String(text || '').trim());
+
 export default function ExamTaker({ exams, currentStudent, onAddGrade }: ExamTakerProps) {
   const [activeSession, setActiveSession] = useState<{
     exam: Exam;
@@ -450,9 +453,21 @@ export default function ExamTaker({ exams, currentStudent, onAddGrade }: ExamTak
             {/* Question description */}
             <div className="space-y-1.5">
               <span className="text-[9px] text-indigo-550 dark:text-indigo-400 font-extrabold uppercase font-sans tracking-wide block">QUESTION BODY</span>
-              <h2 className="text-xs font-bold leading-relaxed text-gray-900 dark:text-zinc-100">
-                {currentQuestion?.text || ''}
-              </h2>
+              {currentQuestion?.imageUrl && (
+                <div className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-neutral-50 dark:border-slate-800 dark:bg-slate-950">
+                  <img
+                    src={currentQuestion.imageUrl}
+                    alt={`صورة السؤال ${currentQuestion.pageNumber || activeSession.currentQuestionIndex + 1}`}
+                    className="block w-full max-h-[62vh] object-contain bg-white dark:bg-slate-950"
+                    draggable={false}
+                  />
+                </div>
+              )}
+              {currentQuestion?.text && (!currentQuestion.imageUrl || !isGeneratedPdfQuestionText(currentQuestion.text)) && (
+                <h2 className="text-xs font-bold leading-relaxed text-gray-900 dark:text-zinc-100">
+                  {currentQuestion.text}
+                </h2>
+              )}
             </div>
 
             {/* Matrix of Large Touch choices targets (easy thumb touches!) */}

@@ -88,6 +88,8 @@ export interface ExamQuestion {
   points: number;
   questionType?: 'mcq' | 'numeric';
   pageNumber?: number;
+  imageUrl?: string;
+  imageStoragePath?: string;
   explanation?: string;
 }
 
