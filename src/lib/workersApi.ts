@@ -5,7 +5,6 @@
 
 import {
   dbAdapter,
-  getPortalDataReadMeta,
   isSupabaseConfigured,
 } from '../supabaseClient';
 import { AttendanceRecord, Exam, GradeRecord, GroupTimeSlot, PaymentRecord, StudentProfile } from '../types';
@@ -27,23 +26,55 @@ interface JoinRequestResponse {
 
 export const isWorkersApiConfigured = isSupabaseConfigured;
 
-export function saveToCache(key: string, cacheData: unknown): void {
-  try {
-    window.localStorage.setItem(`portal_cache_${key}`, JSON.stringify({ at: Date.now(), data: cacheData }));
-  } catch {
-    // Local cache is best-effort only.
-  }
+const READ_RETRY_DELAYS_MS = [250, 750];
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
-export function loadFromCache<T>(key: string): T | null {
-  try {
-    const rawCache = window.localStorage.getItem(`portal_cache_${key}`);
-    if (!rawCache) return null;
-    const parsedCache = JSON.parse(rawCache) as { data?: T };
-    return parsedCache.data ?? null;
-  } catch {
-    return null;
+function getErrorStatus(error: unknown): number | null {
+  const record = error && typeof error === 'object' ? error as Record<string, unknown> : {};
+  const rawStatus = record.status ?? record.statusCode ?? record.code;
+  const numericStatus = Number(rawStatus);
+  return Number.isFinite(numericStatus) ? numericStatus : null;
+}
+
+function isRetryableReadError(error: unknown): boolean {
+  const status = getErrorStatus(error);
+  if (status !== null) {
+    return status === 408 || status === 425 || status === 429 || status >= 500;
   }
+
+  const message = String(error instanceof Error ? error.message : error || '').toLowerCase();
+  return (
+    message.includes('failed to fetch') ||
+    message.includes('network') ||
+    message.includes('timeout') ||
+    message.includes('timed out') ||
+    message.includes('temporarily unavailable') ||
+    message.includes('connection') ||
+    message.includes('offline')
+  );
+}
+
+async function withReadRetry<T>(operationName: string, read: () => Promise<T>): Promise<T> {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= READ_RETRY_DELAYS_MS.length; attempt += 1) {
+    try {
+      return await read();
+    } catch (error) {
+      lastError = error;
+      if (attempt >= READ_RETRY_DELAYS_MS.length || !isRetryableReadError(error)) {
+        throw error;
+      }
+
+      console.warn(`[portal] retrying ${operationName} after transient read failure`, error);
+      await sleep(READ_RETRY_DELAYS_MS[attempt]);
+    }
+  }
+
+  throw lastError;
 }
 
 export async function clearAuthData(): Promise<void> {
@@ -117,11 +148,7 @@ export async function loginStudent(phoneNumber: string, studentCode: string): Pr
   const loginResponse = await dbAdapter.login(studentCode, phoneNumber);
 
   if (loginResponse.success) {
-    const student = loginResponse.student ?? null;
-    if (student && getPortalDataReadMeta('profile')?.source === 'live') {
-      saveToCache('profile', student);
-    }
-    return student;
+    return loginResponse.student ?? null;
   }
 
   if (loginResponse.error) {
@@ -132,43 +159,23 @@ export async function loginStudent(phoneNumber: string, studentCode: string): Pr
 }
 
 export async function fetchAttendance(studentId: string): Promise<AttendanceRecord[]> {
-  const attendanceRecords = await dbAdapter.getAttendance(studentId);
-  if (getPortalDataReadMeta('attendance')?.source === 'live') {
-    saveToCache(`attendance_${studentId}`, attendanceRecords);
-  }
-  return attendanceRecords;
+  return withReadRetry('attendance', () => dbAdapter.getAttendance(studentId));
 }
 
 export async function fetchPayments(studentId: string): Promise<PaymentRecord[]> {
-  const paymentRecords = await dbAdapter.getPayments(studentId);
-  if (getPortalDataReadMeta('payments')?.source === 'live') {
-    saveToCache(`payments_${studentId}`, paymentRecords);
-  }
-  return paymentRecords;
+  return withReadRetry('payments', () => dbAdapter.getPayments(studentId));
 }
 
 export async function fetchGrades(studentId: string): Promise<GradeRecord[]> {
-  const gradeRecords = await dbAdapter.getGrades(studentId);
-  if (getPortalDataReadMeta('grades')?.source === 'live') {
-    saveToCache(`grades_${studentId}`, gradeRecords);
-  }
-  return gradeRecords;
+  return withReadRetry('grades', () => dbAdapter.getGrades(studentId));
 }
 
 export async function fetchGroupTimes(studentId: string): Promise<GroupTimeSlot[]> {
-  const records = await dbAdapter.getGroupTimes(studentId);
-  if (getPortalDataReadMeta('groupTimes')?.source === 'live') {
-    saveToCache(`groupTimes_${studentId}`, records);
-  }
-  return records;
+  return withReadRetry('groupTimes', () => dbAdapter.getGroupTimes(studentId));
 }
 
 export async function fetchExams(student: StudentProfile): Promise<Exam[]> {
-  const examRecords = await dbAdapter.getExams(student);
-  if (getPortalDataReadMeta('exams')?.source === 'live') {
-    saveToCache(`exams_${student.id}`, examRecords);
-  }
-  return examRecords;
+  return withReadRetry('exams', () => dbAdapter.getExams(student));
 }
 
 export async function payInvoice(invoiceId: string, _amount?: number): Promise<{ success: boolean; error?: unknown }> {

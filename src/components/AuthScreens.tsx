@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   loginStudent,
   submitJoinRequest,
@@ -13,7 +13,7 @@ import {
   PortalJoinFieldKey,
   PortalJoinSettings,
 } from '../lib/workersApi';
-import { ArrowRight, CheckCircle2, AlertCircle, Sparkles, Phone, User, BookOpen, Layers, Users, Wifi } from 'lucide-react';
+import { ArrowRight, CheckCircle2, AlertCircle, Sparkles, Phone, User, BookOpen, Layers, Users, Wifi, RefreshCw } from 'lucide-react';
 import { StudentProfile, CenterConfig } from '../types';
 
 interface AuthScreensProps {
@@ -126,37 +126,44 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
     [centerGroups, grade],
   );
 
-  // Load the real groups once the join view is opened or when a fetch failure occurred.
-  useEffect(() => {
-    if (view !== 'join' || groupsLoading) return;
-    let cancelled = false;
+  const refreshJoinData = useCallback(async () => {
     setGroupsLoading(true);
     setGroupsFetchError(false);
-    Promise.allSettled([fetchActiveGroups(), fetchPortalJoinSettings()])
-      .then(([groupsResult, settingsResult]) => {
-        if (cancelled) return;
 
-        if (groupsResult.status === 'fulfilled') {
-          setCenterGroups(groupsResult.value);
-        } else {
-          console.error('fetchActiveGroups failed:', groupsResult.reason);
-          setGroupsFetchError(true);
-        }
+    const [groupsResult, settingsResult] = await Promise.allSettled([
+      fetchActiveGroups(),
+      fetchPortalJoinSettings(),
+    ]);
 
-        if (settingsResult.status === 'fulfilled') {
-          setJoinSettings(settingsResult.value);
-        } else {
-          console.error('fetchPortalJoinSettings failed:', settingsResult.reason);
-          setJoinSettings(DEFAULT_JOIN_SETTINGS);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setGroupsLoading(false);
-      });
+    if (groupsResult.status === 'fulfilled') {
+      setCenterGroups(groupsResult.value);
+    } else {
+      console.error('fetchActiveGroups failed:', groupsResult.reason);
+      setGroupsFetchError(true);
+    }
+
+    if (settingsResult.status === 'fulfilled') {
+      setJoinSettings(settingsResult.value);
+    } else {
+      console.error('fetchPortalJoinSettings failed:', settingsResult.reason);
+      setJoinSettings(DEFAULT_JOIN_SETTINGS);
+    }
+
+    setGroupsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (view !== 'join') return;
+    let cancelled = false;
+    refreshJoinData().finally(() => {
+      if (cancelled) {
+        setGroupsLoading(false);
+      }
+    });
     return () => {
       cancelled = true;
     };
-  }, [view]);
+  }, [view, refreshJoinData]);
 
   // When the stage changes, snap the grade back to a valid option for that stage.
   const handleStageChange = (nextStage: string) => {
@@ -497,9 +504,21 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
                 aria-labelledby="auth-tab-join"
                 aria-describedby={joinErrorMsg ? 'join-error-message' : joinSuccessMsg ? 'join-success-message' : undefined}
               >
-                <div className="text-right space-y-1">
+                <div className="flex items-start justify-between gap-3 text-right">
+                  <div className="space-y-1">
                   <h2 className="text-base font-black text-text-primary">إرسال طلب التحاق جديد للسنتر</h2>
                   <p className="text-xs text-text-muted">املأ البيانات المطلوبة وسيتم إرسال طلب انضمام رسمي للأستاذ ومراجعته.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={refreshJoinData}
+                    disabled={groupsLoading}
+                    className="h-9 px-3 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/15 disabled:opacity-60 text-indigo-650 dark:text-indigo-300 border border-indigo-500/15 text-[11px] font-bold transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer"
+                    aria-busy={groupsLoading}
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${groupsLoading ? 'animate-spin' : ''}`} />
+                    <span>تحديث</span>
+                  </button>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-4">
@@ -615,17 +634,8 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
                         <span className="flex-1">تعذر تحميل قائمة المجموعات. يرجى التحقق من الاتصال.</span>
                         <button
                           type="button"
-                          onClick={() => {
-                            setGroupsLoading(true);
-                            setGroupsFetchError(false);
-                            fetchActiveGroups()
-                              .then((groups) => setCenterGroups(groups))
-                              .catch((err) => {
-                                console.error('fetchActiveGroups failed:', err);
-                                setGroupsFetchError(true);
-                              })
-                              .finally(() => setGroupsLoading(false));
-                          }}
+                          onClick={refreshJoinData}
+                          disabled={groupsLoading}
                           className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 font-bold transition-colors cursor-pointer"
                         >
                           إعادة المحاولة

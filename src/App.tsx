@@ -27,7 +27,6 @@ import {
   fetchExams as apiFetchExams,
   fetchGroupTimes as apiFetchGroupTimes,
   fetchCenterBySubdomain,
-  saveToCache,
   clearAuthData,
 } from './lib/workersApi';
 import { playPortalHaptic as playMobileHapticTap } from './lib/audioFeedback';
@@ -41,11 +40,8 @@ import {
 } from './lib/portalStorage';
 import {
   formatFreshnessTimestamp,
-  getPortalDataFreshness,
   PortalDataFreshness,
-  PortalDataSource,
 } from './lib/portalDataState';
-import { getPortalDataReadMeta, PortalDataReadKey } from './supabaseClient';
 import AuthScreens from './components/AuthScreens';
 import { 
   LayoutDashboard, CalendarCheck, CreditCard, 
@@ -93,42 +89,28 @@ function normalizeCenterConfig(config: CenterConfig): CenterConfig {
   };
 }
 
-const PORTAL_DATA_READ_KEYS: PortalDataReadKey[] = ['attendance', 'payments', 'grades', 'exams', 'groupTimes'];
+type PortalSectionLoadResult<T> = {
+  section: string;
+  data: T | null;
+  error: string | null;
+};
 
-function dominantPortalDataSource(sources: PortalDataSource[]): PortalDataSource {
-  if (sources.includes('snapshot')) return 'snapshot';
-  if (sources.includes('cache')) return 'cache';
-  if (sources.includes('local')) return 'local';
-  return 'live';
+async function loadPortalSection<T>(section: string, loader: () => Promise<T>): Promise<PortalSectionLoadResult<T>> {
+  try {
+    return { section, data: await loader(), error: null };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error || 'unknown_error');
+    console.warn(`[portal] failed to load ${section}`, error);
+    return { section, data: null, error: message };
+  }
 }
 
-function buildPortalDataFreshness(studentId: string): PortalDataFreshness {
-  const readMetas = PORTAL_DATA_READ_KEYS
-    .map((key) => getPortalDataReadMeta(key))
-    .filter((meta): meta is NonNullable<typeof meta> => Boolean(meta));
-  const source = readMetas.length > 0
-    ? dominantPortalDataSource(readMetas.map((meta) => meta.source))
-    : 'cache';
-  const cacheFreshnessEntries = PORTAL_DATA_READ_KEYS
-    .map((key) => getPortalDataFreshness(`${key}_${studentId}`, source))
-    .filter((entry): entry is PortalDataFreshness => Boolean(entry));
-  const timestamps = [
-    ...cacheFreshnessEntries.map((entry) => entry.updatedAt).filter((value): value is number => Boolean(value)),
-    ...readMetas.map((meta) => meta.at),
-  ];
-
+function buildPortalDataFreshness(): PortalDataFreshness {
   return {
-    source,
-    updatedAt: timestamps.length > 0 ? Math.max(...timestamps) : null,
-    isStale: source !== 'live' || cacheFreshnessEntries.some((entry) => entry.isStale),
+    source: 'live',
+    updatedAt: Date.now(),
+    isStale: false,
   };
-}
-
-function portalDataSourceLabel(source: PortalDataSource): string {
-  if (source === 'snapshot') return 'نسخة احتياطية';
-  if (source === 'cache') return 'الكاش المحلي';
-  if (source === 'local') return 'التخزين المحلي';
-  return 'Supabase مباشر';
 }
 
 function StudentPortalApp() {
@@ -136,16 +118,7 @@ function StudentPortalApp() {
     clearLegacyStudentData();
   }, []);
   
-  // Center White-label Configuration (Commercial Mode) — محمل من localStorage أو من الخادم
-  const [centerConfig, setCenterConfig] = useState<CenterConfig>(() => {
-    const saved = localStorage.getItem('portal_center_config');
-    if (saved) {
-      try {
-        return normalizeCenterConfig(JSON.parse(saved));
-      } catch (e) {}
-    }
-    return DEFAULT_CENTER_CONFIG;
-  });
+  const [centerConfig, setCenterConfig] = useState<CenterConfig>(() => DEFAULT_CENTER_CONFIG);
 
   useEffect(() => {
     let cancelled = false;
@@ -176,7 +149,6 @@ function StudentPortalApp() {
       if (teacherName) sessionStorage.setItem('teacher_name', teacherName);
       if (subjectName) sessionStorage.setItem('subject_name', subjectName);
       sessionStorage.setItem('portal_subdomain', subdomain);
-      saveToCache('portal_center', center);
 
       const nextConfig: CenterConfig = {
         centerName: centerName || centerConfig.centerName,
@@ -186,7 +158,6 @@ function StudentPortalApp() {
         slogan: centerConfig.slogan,
       };
       const normalizedConfig = normalizeCenterConfig(nextConfig);
-      localStorage.setItem('portal_center_config', JSON.stringify(normalizedConfig));
       setCenterConfig(normalizedConfig);
     }
 
@@ -310,30 +281,38 @@ const [groupTimes, setGroupTimes] = useState<GroupTimeSlot[]>(() => []);
         setFetchError(null);
         try {
           const sid = currentStudent.id;
-          const [liveAttendance, livePayments, liveGrades, liveExams, liveGroupTimes] = await Promise.all([
-            apiFetchAttendance(sid),
-            apiFetchPayments(sid),
-            apiFetchGrades(sid),
-            apiFetchExams(currentStudent),
-            apiFetchGroupTimes(sid),
+          const [attendanceResult, paymentsResult, gradesResult, examsResult, groupTimesResult] = await Promise.all([
+            loadPortalSection('attendance', () => apiFetchAttendance(sid)),
+            loadPortalSection('payments', () => apiFetchPayments(sid)),
+            loadPortalSection('grades', () => apiFetchGrades(sid)),
+            loadPortalSection('exams', () => apiFetchExams(currentStudent)),
+            loadPortalSection('groupTimes', () => apiFetchGroupTimes(sid)),
           ]);
-          if (liveAttendance) setAttendance(liveAttendance);
-          if (liveGroupTimes) setGroupTimes(liveGroupTimes);
-          if (livePayments) {
-            setPayments(livePayments);
-            const actualUnpaidSum = livePayments
+
+          const sectionErrors = [attendanceResult, paymentsResult, gradesResult, examsResult, groupTimesResult]
+            .filter((result) => result.error)
+            .map((result) => result.section);
+
+          if (attendanceResult.data) setAttendance(attendanceResult.data);
+          if (groupTimesResult.data) setGroupTimes(groupTimesResult.data);
+          if (paymentsResult.data) {
+            setPayments(paymentsResult.data);
+            const actualUnpaidSum = paymentsResult.data
               .filter((p) => p.status === 'pending')
               .reduce((acc, p) => acc + p.amount, 0);
             setProfile(prev => ({ ...prev, unpaidFees: actualUnpaidSum }));
           }
-          if (liveGrades) setGrades(liveGrades);
-          if (liveExams) setExams(liveExams);
+          if (gradesResult.data) setGrades(gradesResult.data);
+          if (examsResult.data) setExams(examsResult.data);
+          if (sectionErrors.length > 0) {
+            setFetchError(`تعذر تحديث بعض الأقسام: ${sectionErrors.join('، ')}`);
+          }
         } catch (e: any) {
           const msg = e?.message || 'فشل جلب البيانات من الخادم';
           setFetchError(msg);
           console.warn('فشل سحب البيانات من Workers API:', msg);
         } finally {
-          setDataFreshness(buildPortalDataFreshness(currentStudent.id));
+          setDataFreshness(buildPortalDataFreshness());
           setIsLoading(false);
         }
       };
@@ -414,10 +393,6 @@ const [groupTimes, setGroupTimes] = useState<GroupTimeSlot[]>(() => []);
             setCurrentStudent(student);
             persistStudentSession(student);
             clearLegacyStudentData();
-            const savedConfig = localStorage.getItem('portal_center_config');
-            if (savedConfig) {
-              try { setCenterConfig(JSON.parse(savedConfig)); } catch (e) {}
-            }
           }} 
           centerConfig={centerConfig}
         />
@@ -562,7 +537,7 @@ const [groupTimes, setGroupTimes] = useState<GroupTimeSlot[]>(() => []);
           >
             <Info className="w-4 h-4 shrink-0" />
             <span>
-              مصدر البيانات: {portalDataSourceLabel(dataFreshness.source)}. آخر تحديث: {formatFreshnessTimestamp(dataFreshness.updatedAt)}.
+              مصدر البيانات: Supabase مباشر. آخر تحديث: {formatFreshnessTimestamp(dataFreshness.updatedAt)}.
             </span>
           </div>
         )}

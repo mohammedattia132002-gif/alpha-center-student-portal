@@ -20,17 +20,8 @@ const DEFAULT_AVATAR =
 
 // Lazy initialization of Supabase client to prevent immediate startup crash
 let _supabaseClient: any = null;
-type SnapshotEntry = {
-  student?: Record<string, any>;
-  attendance?: any[];
-  payments?: any[];
-  grades?: any[];
-  groupTimes?: any[];
-};
-
-type StudentSnapshotsMap = Record<string, SnapshotEntry>;
 export type PortalDataReadKey = 'profile' | 'attendance' | 'payments' | 'grades' | 'exams' | 'groupTimes';
-export type PortalDataReadSource = 'live' | 'cache' | 'snapshot';
+export type PortalDataReadSource = 'live';
 export type PortalJoinFieldKey =
   | 'student_name'
   | 'parent_phone'
@@ -69,7 +60,6 @@ interface SavedExamResult {
 }
 
 const lastPortalDataReads: Partial<Record<PortalDataReadKey, PortalDataReadMeta>> = {};
-let studentSnapshotsPromise: Promise<StudentSnapshotsMap> | null = null;
 
 export const DEFAULT_PORTAL_JOIN_SETTINGS: PortalJoinSettings = {
   fields: {
@@ -86,6 +76,14 @@ export const DEFAULT_PORTAL_JOIN_SETTINGS: PortalJoinSettings = {
 };
 
 const PORTAL_JOIN_FIELD_KEYS = Object.keys(DEFAULT_PORTAL_JOIN_SETTINGS.fields) as PortalJoinFieldKey[];
+
+const CLOSED_PORTAL_JOIN_SETTINGS: PortalJoinSettings = {
+  fields: Object.fromEntries(
+    PORTAL_JOIN_FIELD_KEYS.map((key) => [key, { visible: false, required: false }]),
+  ) as Record<PortalJoinFieldKey, PortalJoinFieldConfig>,
+  stages: {},
+  grades: {},
+};
 
 function normalizePortalJoinSettings(value: unknown): PortalJoinSettings {
   const parsed = typeof value === 'string' && value.trim() ? JSON.parse(value) : value;
@@ -131,46 +129,6 @@ function recordPortalDataRead(key: PortalDataReadKey, source: PortalDataReadSour
 
 export function getPortalDataReadMeta(key: PortalDataReadKey): PortalDataReadMeta | null {
   return lastPortalDataReads[key] ?? null;
-}
-
-async function loadStudentSnapshots(): Promise<StudentSnapshotsMap> {
-  if (!studentSnapshotsPromise) {
-    studentSnapshotsPromise = import('../data/student-snapshots.json')
-      .then((module) => (module.default ?? module) as StudentSnapshotsMap)
-      .catch((error) => {
-        console.warn('Failed to load student snapshots fallback.', error);
-        return {} as StudentSnapshotsMap;
-      });
-  }
-
-  return studentSnapshotsPromise;
-}
-
-async function getStudentSnapshotEntry(studentId: string): Promise<SnapshotEntry | null> {
-  if (!studentId) {
-    return null;
-  }
-
-  const studentSnapshots = await loadStudentSnapshots();
-  return studentSnapshots[studentId] ?? null;
-}
-
-async function findSnapshotEntryForLogin(
-  normalizedCode: string,
-  cleanPhone: string,
-): Promise<SnapshotEntry | null> {
-  const studentSnapshots = await loadStudentSnapshots();
-  const snapshotEntry = Object.values(studentSnapshots).find((entry) => {
-    const student = entry.student;
-    if (!student) return false;
-    const codeMatches = normalizeStudentCode(student.student_code) === normalizedCode;
-    const phoneMatches =
-      matchesPhoneValue(student.student_phone, cleanPhone) ||
-      matchesPhoneValue(student.parent_phone, cleanPhone);
-    return codeMatches && phoneMatches;
-  });
-
-  return snapshotEntry ?? null;
 }
 
 export function getSupabase() {
@@ -369,6 +327,16 @@ function buildJoinReferenceCode(): string {
   return `JR-${Date.now().toString(36).toUpperCase()}`;
 }
 
+function settledValue<T>(result: PromiseSettledResult<T>, fallback: T): T {
+  if (result.status === 'fulfilled') return result.value;
+  console.warn('[portal] optional Supabase read failed:', result.reason);
+  return fallback;
+}
+
+function isFulfilled<T>(result: PromiseSettledResult<T>): result is PromiseFulfilledResult<T> {
+  return result.status === 'fulfilled';
+}
+
 // app_settings.setting_value is a JSON column. The desktop stores plain scalar strings,
 // but supabase-js may hand them back either already-parsed or as a JSON-encoded string.
 function parseSettingValue(value: unknown): string {
@@ -562,34 +530,7 @@ export const dbAdapter = {
     const cleanPhone = phone.trim();
     const normalizedCode = normalizeStudentCode(cleanCode);
 
-    const checkSnapshotFallback = async () => {
-      const snapshotEntry = await findSnapshotEntryForLogin(normalizedCode, cleanPhone);
-
-      if (snapshotEntry) {
-        const s = (snapshotEntry as any).student;
-        const mappedStudent: StudentProfile = {
-          id: String(s.id || ''),
-          name: String(s.student_name || 'طالب'),
-          avatar: DEFAULT_AVATAR,
-          department: String(s.group_name || 'المجموعة الأكاديمية').trim() || 'المجموعة الأكاديمية',
-          academicYear: String(s.grade || 'غير محدد'),
-          gpa: 0,
-          totalCredits: 0,
-          unpaidFees: 0,
-          attendanceRate: 100,
-          studentCode: String(s.student_code || ''),
-          studentPhone: normalizePhoneNumber(s.student_phone) || undefined,
-          parentPhone: normalizePhoneNumber(s.parent_phone) || undefined,
-        };
-        recordPortalDataRead('profile', 'snapshot');
-        return { success: true, student: mappedStudent };
-      }
-      return null;
-    };
-
     if (!isSupabaseConfigured()) {
-      const snapshotRes = await checkSnapshotFallback();
-      if (snapshotRes) return snapshotRes;
       return { success: false, error: 'Supabase غير مهيأ. لا يمكن تسجيل الدخول الآن.' };
     }
 
@@ -713,12 +654,11 @@ export const dbAdapter = {
     }
   },
 
-// Read the real active groups defined on the desktop so the join-request form
+  // Read the real active groups defined on the desktop so the join-request form
   // offers actual center groups instead of hardcoded placeholders.
-  // Falls back to snapshot fallback data when Supabase has no results.
   async getActiveGroups(): Promise<Array<{ id: string; name: string; gradeLevel: string }>> {
     if (!isSupabaseConfigured()) {
-      return this.getGroupSnapshots();
+      return [];
     }
 
     const client = getSupabase();
@@ -757,12 +697,12 @@ export const dbAdapter = {
       console.error('Supabase groups fetch error:', e);
     }
 
-    return this.getGroupSnapshots();
+    return [];
   },
 
   async getPortalJoinSettings(): Promise<PortalJoinSettings> {
     if (!isSupabaseConfigured()) {
-      return DEFAULT_PORTAL_JOIN_SETTINGS;
+      return CLOSED_PORTAL_JOIN_SETTINGS;
     }
 
     const client = getSupabase();
@@ -776,28 +716,14 @@ export const dbAdapter = {
         .maybeSingle();
 
       if (error || !data) {
-        return DEFAULT_PORTAL_JOIN_SETTINGS;
+        return CLOSED_PORTAL_JOIN_SETTINGS;
       }
 
       return normalizePortalJoinSettings((data as any).setting_value);
     } catch (error) {
       console.error('Supabase portal join settings error:', error);
-      return DEFAULT_PORTAL_JOIN_SETTINGS;
+      return CLOSED_PORTAL_JOIN_SETTINGS;
     }
-  },
-
-  // Fallback: extract unique groups from student snapshots
-  getGroupSnapshots(): Array<{ id: string; name: string; gradeLevel: string }> {
-    try {
-      const raw = localStorage.getItem('portal_cache_profile');
-      if (!raw) return [];
-      const parsed = JSON.parse(raw) as { data?: { department?: string } };
-      const department = parsed?.data?.department;
-      if (department) {
-        return [{ id: 'snapshot-group', name: department, gradeLevel: '' }];
-      }
-    } catch {}
-    return [];
   },
 
 // Load group schedule times for the student's group
@@ -834,30 +760,13 @@ export const dbAdapter = {
       }
     }
 
-    let snapshotRecords: GroupTimeSlot[] = [];
-    const snapshotEntry = await getStudentSnapshotEntry(studentId);
-    if (snapshotEntry && Array.isArray(snapshotEntry.groupTimes)) {
-      snapshotRecords = snapshotEntry.groupTimes.map((row: any) => ({
-        id: String(row.id),
-        weekday: Number(row.weekday),
-        startTime: formatTimeLabel(row.start_time || row.startTime),
-        endTime: formatTimeLabel(row.end_time || row.endTime),
-        room: String(row.room || '').trim(),
-        teacherName: String(row.teacher_name || row.teacherName || '').trim(),
-      }));
-    }
-
-    const mergedMap = new Map<string, GroupTimeSlot>();
-    snapshotRecords.forEach((rec) => mergedMap.set(rec.id, rec));
-    supabaseRecords.forEach((rec) => mergedMap.set(rec.id, rec));
-
-    const finalRecords = Array.from(mergedMap.values());
+    const finalRecords = supabaseRecords;
     if (finalRecords.length > 0) {
-      recordPortalDataRead('groupTimes', !isSupabaseConfigured() ? 'snapshot' : 'live');
+      recordPortalDataRead('groupTimes', 'live');
       return finalRecords.sort((a, b) => a.weekday - b.weekday || a.startTime.localeCompare(b.startTime));
     }
 
-    recordPortalDataRead('groupTimes', isSupabaseConfigured() ? 'live' : 'snapshot');
+    recordPortalDataRead('groupTimes', 'live');
     return [];
   },
 
@@ -928,7 +837,7 @@ export const dbAdapter = {
             new Set(data.map((row: any) => safeUuid(row?.operational_session_id)).filter((value): value is string => Boolean(value))),
           );
 
-          const [{ data: legacyRows }, { data: operationalRows }, fallbackGroup] = await Promise.all([
+          const [legacySessionsResult, operationalSessionsResult, fallbackGroupResult] = await Promise.allSettled([
             legacySessionIds.length
               ? client.from('sessions').select('id,group_id,start_time,starts_at,date,metadata').in('id', legacySessionIds)
               : Promise.resolve({ data: [] as any[] }),
@@ -940,6 +849,9 @@ export const dbAdapter = {
               : Promise.resolve({ data: [] as any[] }),
             resolveStudentGroupSummary(client, studentId).catch(() => null),
           ]);
+          const { data: legacyRows } = settledValue(legacySessionsResult, { data: [] as any[] });
+          const { data: operationalRows } = settledValue(operationalSessionsResult, { data: [] as any[] });
+          const fallbackGroup = settledValue(fallbackGroupResult, null);
 
           const sessionRows = [
             ...(Array.isArray(legacyRows) ? legacyRows : []),
@@ -989,34 +901,13 @@ export const dbAdapter = {
       }
     }
 
-    let snapshotRecords: AttendanceRecord[] = [];
-    const snapshotEntry = await getStudentSnapshotEntry(studentId);
-    if (snapshotEntry && Array.isArray(snapshotEntry.attendance)) {
-      snapshotRecords = snapshotEntry.attendance.map((row: any) => {
-      const status = String(row.status || '').trim().toLowerCase();
-      return {
-        id: String(row.id),
-        date: formatDateOnly(row.date || row.recorded_at),
-        subject: String(row.session_name || row.subject || 'الحصة الدراسية').trim(),
-        time: formatTimeLabel(row.check_in_time || row.time),
-        status: status === 'late' ? 'late' : status === 'present' ? 'present' : status === 'excused' ? 'excused' : 'absent',
-        lecturer: String(row.lecturer || 'سنتر ألفا').trim(),
-        remarks: String(row.note || row.reason || '').trim() || undefined,
-      };
-      });
-    }
-
-    const mergedMap = new Map<string, AttendanceRecord>();
-    snapshotRecords.forEach((rec) => mergedMap.set(rec.id, rec));
-    supabaseRecords.forEach((rec) => mergedMap.set(rec.id, rec));
-
-    const finalRecords = Array.from(mergedMap.values());
+    const finalRecords = supabaseRecords;
     if (finalRecords.length > 0) {
-      recordPortalDataRead('attendance', !isSupabaseConfigured() ? 'snapshot' : 'live');
+      recordPortalDataRead('attendance', 'live');
       return finalRecords.sort((left, right) => getDateSortTime(right.date) - getDateSortTime(left.date));
     }
 
-    recordPortalDataRead('attendance', !isSupabaseConfigured() ? 'snapshot' : 'live');
+    recordPortalDataRead('attendance', 'live');
     return [];
   },
 
@@ -1030,20 +921,23 @@ export const dbAdapter = {
     if (isSupabaseConfigured()) {
       const client = getSupabase();
       try {
-        const [data, { data: studentRow }] = await Promise.all([
-          fetchAllRows(client, 'payments', (query) => query
-            .eq('tenant_id', PORTAL_TENANT_ID)
-            .eq('student_id', studentId)
-            .is('deleted_at', null)
-            .order('paid_at', { ascending: false })
-            .order('created_at', { ascending: false })),
-          client
-            .from('students')
-            .select('id,student_code,balance')
-            .eq('tenant_id', PORTAL_TENANT_ID)
-            .eq('id', studentId)
-            .maybeSingle(),
-        ]);
+        const data = await fetchAllRows(client, 'payments', (query) => query
+          .eq('tenant_id', PORTAL_TENANT_ID)
+          .eq('student_id', studentId)
+          .is('deleted_at', null)
+          .order('paid_at', { ascending: false })
+          .order('created_at', { ascending: false }));
+        const studentRowResult = await client
+          .from('students')
+          .select('id,student_code,balance')
+          .eq('tenant_id', PORTAL_TENANT_ID)
+          .eq('id', studentId)
+          .maybeSingle()
+          .catch((error: unknown) => {
+            console.warn('[portal] optional student balance read failed:', error);
+            return { data: null };
+          });
+        const studentRow = studentRowResult.data;
 
         if (studentRow) {
           studentCode = (studentRow as any).student_code || '';
@@ -1122,33 +1016,7 @@ export const dbAdapter = {
       }
     }
 
-    let snapshotRecords: PaymentRecord[] = [];
-    if (!isSupabaseConfigured()) {
-      const snapshotEntry = await getStudentSnapshotEntry(studentId);
-      if (snapshotEntry) {
-        if (Array.isArray(snapshotEntry.payments)) {
-          snapshotRecords = snapshotEntry.payments.map((row: any) => ({
-          id: String(row.id),
-          title: String(row.title || 'دفعة مالية').trim(),
-          amount: Number(row.amount || 0),
-          dueDate: formatDateOnly(row.due_date),
-          paidDate: row.paid_at ? formatDateOnly(row.paid_at) : undefined,
-          status: toPaymentStatus(row.status || (row.paid_at ? 'paid' : 'pending')),
-          invoiceNo: String(row.invoice_no || row.id),
-          category: inferPaymentCategory(row.title),
-          }));
-        }
-        if (!studentCode && snapshotEntry.student) {
-          studentCode = snapshotEntry.student.student_code || '';
-        }
-      }
-    }
-
-    const mergedMap = new Map<string, PaymentRecord>();
-    snapshotRecords.forEach((rec) => mergedMap.set(rec.id, rec));
-    supabaseRecords.forEach((rec) => mergedMap.set(rec.id, rec));
-
-    let finalRecords = Array.from(mergedMap.values());
+    let finalRecords = supabaseRecords;
 
     if (isOutstanding && !finalRecords.some((row) => row.status === 'pending' || row.status === 'overdue')) {
       finalRecords.unshift({
@@ -1163,11 +1031,11 @@ export const dbAdapter = {
     }
 
     if (finalRecords.length > 0) {
-      recordPortalDataRead('payments', !isSupabaseConfigured() ? 'snapshot' : 'live');
+      recordPortalDataRead('payments', 'live');
       return finalRecords.sort((left, right) => getDateSortTime(right.paidDate || right.dueDate) - getDateSortTime(left.paidDate || left.dueDate));
     }
 
-    recordPortalDataRead('payments', !isSupabaseConfigured() ? 'snapshot' : 'live');
+    recordPortalDataRead('payments', 'live');
     return [];
   },
 
@@ -1206,49 +1074,13 @@ export const dbAdapter = {
       }
     }
 
-    // Merge snapshot grades
-    let snapshotRecords: GradeRecord[] = [];
-    if (!isSupabaseConfigured()) {
-      const snapshotEntry = await getStudentSnapshotEntry(studentId);
-      if (snapshotEntry && Array.isArray(snapshotEntry.grades)) {
-        snapshotRecords = snapshotEntry.grades.map((row: any) => {
-        // Support both legacy snapshot fields (exam_name/exam_date/percentage) and standard fields
-        const rawPercentage = Number(row.percentage || 0);
-        const percentage = row.max_score > 0
-          ? Number(((Number(row.score || 0) / Number(row.max_score)) * 100).toFixed(2))
-          : rawPercentage;
-        const finalPercentage = percentage || rawPercentage;
-        const maxScore = Number(row.max_score || 100);
-        const score = Number(row.score ?? (finalPercentage * maxScore / 100));
-        return {
-          id: String(row.id),
-          subjectCode: String(row.subject_code || row.assessment_id || row.id || '').slice(0, 12).toUpperCase(),
-          subjectName: String(row.subject_name || row.exam_name || row.subject || 'تقييم').trim(),
-          category: mapGradeCategory(row.category || row.type || 'midterm'),
-          score,
-          maxScore,
-          gradeLetter: String(row.grade_letter || row.letter_grade || percentageToLetter(finalPercentage) || 'N/A'),
-          date: formatDateOnly(row.date || row.exam_date || row.assessment_date || row.created_at),
-          feedback: String(row.feedback || row.remarks || '').trim() || undefined,
-          gpaWeight: percentageToGpa(finalPercentage),
-          passed: finalPercentage >= 60,
-          sourceExamId: String(row.assessment_id || '').trim() || undefined,
-        };
-        });
-      }
-    }
-
-    const mergedMap = new Map<string, GradeRecord>();
-    snapshotRecords.forEach((rec) => mergedMap.set(rec.id, rec));
-    supabaseRecords.forEach((rec) => mergedMap.set(rec.id, rec));
-
-    const finalRecords = Array.from(mergedMap.values());
+    const finalRecords = supabaseRecords;
     if (finalRecords.length > 0) {
-      recordPortalDataRead('grades', !isSupabaseConfigured() ? 'snapshot' : 'live');
+      recordPortalDataRead('grades', 'live');
       return finalRecords.sort((a, b) => getDateSortTime(b.date) - getDateSortTime(a.date));
     }
 
-    recordPortalDataRead('grades', !isSupabaseConfigured() ? 'snapshot' : 'live');
+    recordPortalDataRead('grades', 'live');
     return [];
   },
 
@@ -1471,7 +1303,7 @@ export const dbAdapter = {
             }
           }
 
-          const platformExams = await Promise.all(
+          const platformExamResults = await Promise.allSettled(
             visibleExamRows.map(async (exam: any) => {
               const platformQuestionRows = await fetchAllRows(client, 'platform_questions', (query) => query
                 .eq('exam_id', exam.id)
@@ -1482,8 +1314,8 @@ export const dbAdapter = {
                 throw new Error('platform_questions_invalid_response');
               }
 
-              const questions: ExamQuestion[] = await Promise.all(
-                platformQuestionRows.map(async (question: any) => {
+              const questionResults = await Promise.allSettled(
+                platformQuestionRows.map(async (question: any): Promise<ExamQuestion> => {
                   const platformChoiceRows = await fetchAllRows(client, 'platform_choices', (query) => query
                     .eq('question_id', question.id)
                     .is('deleted_at', null)
@@ -1508,6 +1340,9 @@ export const dbAdapter = {
                   };
                 }),
               );
+              const questions: ExamQuestion[] = questionResults
+                .filter(isFulfilled)
+                .map((result) => result.value);
 
               const description = typeof exam.description === 'string' ? exam.description.trim() : '';
               const totalQuestionPoints = questions.reduce((sum, question) => sum + question.points, 0);
@@ -1538,6 +1373,10 @@ export const dbAdapter = {
             }),
           );
 
+          const platformExams = platformExamResults
+            .filter(isFulfilled)
+            .map((result) => result.value);
+
           recordPortalDataRead('exams', 'live');
           return platformExams;
         }
@@ -1546,7 +1385,7 @@ export const dbAdapter = {
         console.error("Error loading exams from Supabase:", e);
       }
     }
-    recordPortalDataRead('exams', isSupabaseConfigured() ? 'live' : 'snapshot');
+    recordPortalDataRead('exams', 'live');
     return [];
   }
 };
