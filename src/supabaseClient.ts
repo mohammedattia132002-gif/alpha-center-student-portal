@@ -847,7 +847,50 @@ export const dbAdapter = {
   },
 
 // Load group schedule times for the student's group
-  async getGroupTimes(_studentId: string): Promise<GroupTimeSlot[]> {
+  async getGroupTimes(studentId: string): Promise<GroupTimeSlot[]> {
+    if (!isSupabaseConfigured()) {
+      return [];
+    }
+
+    const client = getSupabase();
+    try {
+      const groupSummary = await resolveStudentGroupSummary(client, studentId);
+      const groupId = safeUuid(groupSummary?.id);
+      if (!groupId) {
+        recordPortalDataRead('groupTimes', 'live');
+        return [];
+      }
+
+      const { data, error } = await client
+        .from('group_times')
+        .select('id, weekday, start_time, end_time, room, teacher_name')
+        .eq('group_id', groupId)
+        .eq('is_active', true)
+        .is('deleted_at', null)
+        .order('weekday', { ascending: true })
+        .order('start_time', { ascending: true });
+
+      if (error) {
+        logPortalReadError('groupTimes', { studentId, groupId }, error);
+        recordPortalDataRead('groupTimes', 'live');
+        return [];
+      }
+
+      if (Array.isArray(data) && data.length > 0) {
+        recordPortalDataRead('groupTimes', 'live');
+        return data.map((row: any) => ({
+          id: String(row.id),
+          weekday: Number(row.weekday),
+          startTime: String(row.start_time || ''),
+          endTime: String(row.end_time || ''),
+          room: String(row.room || ''),
+          teacherName: String(row.teacher_name || ''),
+        }));
+      }
+    } catch (e) {
+      logPortalReadError('groupTimes', { studentId }, e);
+    }
+
     recordPortalDataRead('groupTimes', 'live');
     return [];
   },
