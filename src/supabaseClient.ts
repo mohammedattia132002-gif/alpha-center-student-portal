@@ -874,8 +874,6 @@ export const dbAdapter = {
       const client = getSupabase();
       try {
         let paymentRows: Record<string, any>[] = [];
-        let ledgerRows: Record<string, any>[] = [];
-        const shouldReadLegacyLedger = (import.meta as any).env?.VITE_ENABLE_LEGACY_LEDGER_READ === 'true';
 
         try {
           paymentRows = await fetchRowsWithFallback<Record<string, any>>(
@@ -891,7 +889,7 @@ export const dbAdapter = {
             true,
           );
         } catch (error) {
-          console.warn('[portal] payments table read failed; trying ledger fallback:', error);
+          console.warn('[portal] payments table read failed:', error);
         }
 
         let studentRow: Record<string, any> | null = null;
@@ -935,74 +933,8 @@ export const dbAdapter = {
           };
         };
 
-        if (shouldReadLegacyLedger) {
-          try {
-            ledgerRows = await fetchRowsWithFallback<Record<string, any>>(
-              client,
-              'financial_ledger',
-              [
-                (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId).eq('reference_type', 'payment').eq('entry_type', 'debit').is('deleted_at', null),
-                (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId).eq('reference_type', 'payment').eq('entry_type', 'debit'),
-                (query) => query.eq('student_id', studentId).eq('reference_type', 'payment').eq('entry_type', 'debit').is('deleted_at', null),
-                (query) => query.eq('student_id', studentId).eq('reference_type', 'payment').eq('entry_type', 'debit'),
-              ],
-              [['created_at'], []],
-              true,
-            );
-          } catch (error) {
-            console.warn('[portal] optional ledger payment read failed:', error);
-          }
-        }
-
-        const knownPayments = new Map(paymentRows.map((row) => [String(row.id), row]));
-        const missingPaymentIds = Array.from(
-          new Set(
-            ledgerRows
-              .map((row) => safeUuid(row?.reference_id) || safeUuid(row?.payment_id))
-              .filter((value): value is string => Boolean(value) && !knownPayments.has(value)),
-          ),
-        );
-
-        if (missingPaymentIds.length > 0) {
-          try {
-            const linkedPaymentRows = await fetchRowsWithFallback<Record<string, any>>(
-              client,
-              'payments',
-              [
-                (query) => query.eq('tenant_id', PORTAL_TENANT_ID).in('id', missingPaymentIds).is('deleted_at', null),
-                (query) => query.eq('tenant_id', PORTAL_TENANT_ID).in('id', missingPaymentIds),
-                (query) => query.in('id', missingPaymentIds).is('deleted_at', null),
-                (query) => query.in('id', missingPaymentIds),
-              ],
-              [['paid_at'], ['timestamp'], ['created_at'], []],
-              true,
-            );
-            linkedPaymentRows.forEach((row) => knownPayments.set(String(row.id), row));
-          } catch (error) {
-            console.warn('[portal] optional linked payment read failed:', error);
-          }
-        }
-
         const directPaymentRecords = paymentRows.map(mapPaymentRow);
-        const ledgerPaymentRecords: PaymentRecord[] = ledgerRows.map((ledger) => {
-          const paymentId = safeUuid(ledger?.reference_id) || safeUuid(ledger?.payment_id) || '';
-          const payment = knownPayments.get(paymentId);
-          if (payment) return mapPaymentRow(payment);
-
-          const title = ledger?.account_code || ledger?.account_type || 'دفعة مالية';
-          return {
-            id: String(paymentId || ledger.id),
-            title: String(title).trim(),
-            amount: Number(ledger?.amount ?? 0),
-            dueDate: formatDateOnly(ledger?.created_at),
-            paidDate: formatDateOnly(ledger?.created_at),
-            status: 'paid',
-            invoiceNo: String(ledger?.transaction_id || ledger?.id),
-            category: inferPaymentCategory(title),
-          };
-        });
-
-        finalRecords = mergePaymentRecords([...directPaymentRecords, ...ledgerPaymentRecords]);
+        finalRecords = mergePaymentRecords(directPaymentRecords);
       } catch (e) {
         console.error(e);
       }

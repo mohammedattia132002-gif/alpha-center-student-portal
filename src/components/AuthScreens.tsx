@@ -311,7 +311,7 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
               className="w-14 h-14 object-contain"
             />
             <div>
-              <h1 id="portal-login-title" className="text-2xl font-black tracking-tight text-text-primary">بوابة سنتر {centerConfig.centerName}</h1>
+              <h1 id="portal-login-title" className="text-2xl font-black tracking-tight text-text-primary">بوابة {centerConfig.centerName}</h1>
               <p className="text-sm text-indigo-650 dark:text-indigo-400 font-bold">{centerConfig.teacherName} - أستاذ {centerConfig.subjectName}</p>
             </div>
           </div>
