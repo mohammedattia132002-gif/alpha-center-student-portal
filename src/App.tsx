@@ -304,6 +304,81 @@ const [groupTimes, setGroupTimes] = useState<GroupTimeSlot[]>(() => []);
           }
           if (gradesResult.data) setGrades(gradesResult.data);
           if (examsResult.data) setExams(examsResult.data);
+
+          // Generate notifications from fetched data
+          const newNotifications: NotificationItem[] = [];
+          const existingIds = new Set(notifications.map(n => n.id));
+
+          if (attendanceResult.data) {
+            for (const record of attendanceResult.data) {
+              const notifId = `notif-attend-${record.id}`;
+              if (record.status === 'absent' && !existingIds.has(notifId)) {
+                newNotifications.push({
+                  id: notifId,
+                  title: 'تسجيل غياب',
+                  message: `تم تسجيل غيابك في حصة ${record.subject} بتاريخ ${record.date}`,
+                  category: 'attendance',
+                  timestamp: record.date,
+                  read: false,
+                });
+              } else if (record.status === 'late' && !existingIds.has(notifId)) {
+                newNotifications.push({
+                  id: notifId,
+                  title: 'تسجيل تأخر',
+                  message: `تم تسجيل تأخرك في حصة ${record.subject} بتاريخ ${record.date}`,
+                  category: 'attendance',
+                  timestamp: record.date,
+                  read: false,
+                });
+              }
+            }
+          }
+
+          if (paymentsResult.data) {
+            for (const payment of paymentsResult.data) {
+              const notifId = `notif-pay-${payment.id}`;
+              if (payment.status === 'overdue' && !existingIds.has(notifId)) {
+                newNotifications.push({
+                  id: notifId,
+                  title: 'فاتورة متأخرة',
+                  message: `${payment.title} بقيمة ${payment.amount} ج.م - تاريخ الاستحقاق: ${payment.dueDate}`,
+                  category: 'payments',
+                  timestamp: payment.dueDate,
+                  read: false,
+                });
+              } else if (payment.status === 'pending' && !existingIds.has(notifId)) {
+                newNotifications.push({
+                  id: notifId,
+                  title: 'فاتورة قيد المتابعة',
+                  message: `${payment.title} بقيمة ${payment.amount} ج.م - تاريخ الاستحقاق: ${payment.dueDate}`,
+                  category: 'payments',
+                  timestamp: payment.dueDate,
+                  read: false,
+                });
+              }
+            }
+          }
+
+          if (gradesResult.data && gradesResult.data.length > 0) {
+            const latestGrade = gradesResult.data[0];
+            const notifId = `notif-grade-${latestGrade.id}`;
+            if (!existingIds.has(notifId)) {
+              newNotifications.push({
+                id: notifId,
+                title: 'نتيجة اختبار جديدة',
+                message: `تم تسجيل نتيجة ${latestGrade.subjectName}: ${latestGrade.score}/${latestGrade.maxScore}`,
+                category: 'system',
+                timestamp: latestGrade.date,
+                read: false,
+              });
+            }
+          }
+
+          if (newNotifications.length > 0) {
+            setNotifications(prev => [...newNotifications, ...prev]);
+            triggerDynamicIsland(`📬 ${newNotifications.length} إشعارات جديد`, 'status');
+          }
+
           if (sectionErrors.length > 0) {
             setFetchError(`تعذر تحديث بعض الأقسام: ${sectionErrors.join('، ')}`);
           }
@@ -336,6 +411,21 @@ const [groupTimes, setGroupTimes] = useState<GroupTimeSlot[]>(() => []);
         ),
       );
     }
+
+    // Generate grade notification
+    const gradeNotif: NotificationItem = {
+      id: `notif-grade-${newGrade.id}`,
+      title: newGrade.passed ? '✅ اجتياز امتحان' : '❌ نتيجة امتحان',
+      message: `${newGrade.subjectName}: ${newGrade.score}/${newGrade.maxScore}${newGrade.passed ? ' - تم الاجتياز بنجاح' : ''}`,
+      category: 'system',
+      timestamp: newGrade.date,
+      read: false,
+    };
+    setNotifications(prev => [gradeNotif, ...prev]);
+    triggerDynamicIsland(
+      newGrade.passed ? `🎉 اجتزت ${newGrade.subjectName}` : `📝 تم تسجيل نتيجة ${newGrade.subjectName}`,
+      newGrade.passed ? 'success' : 'status',
+    );
   };
 
   const handleLogout = () => {

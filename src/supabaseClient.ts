@@ -133,6 +133,16 @@ function logPortalEmptyRead(tableName: string, context: PortalReadDiagnosticCont
   });
 }
 
+function isPortalJoinEnabledValue(value: unknown): boolean {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+  if (typeof value === 'string') {
+    const token = value.trim().toLowerCase();
+    return !['0', 'false', 'no', 'off'].includes(token);
+  }
+  return true;
+}
+
 export const DEFAULT_PORTAL_JOIN_SETTINGS: PortalJoinSettings = {
   fields: {
     student_name: { visible: true, required: true },
@@ -884,16 +894,31 @@ export const dbAdapter = {
 
     const client = getSupabase();
     try {
-      const { data, error } = await client
-        .from('groups')
-        .select('id,name,grade_level,is_active')
-        .eq('tenant_id', PORTAL_TENANT_ID)
-        .eq('is_active', true)
-        .is('deleted_at', null)
-        .order('name', { ascending: true });
+      const fetchGroups = (selectColumns: string) =>
+        client
+          .from('groups')
+          .select(selectColumns)
+          .eq('tenant_id', PORTAL_TENANT_ID)
+          .eq('is_active', true)
+          .is('deleted_at', null)
+          .order('name', { ascending: true });
 
-      if (!error && Array.isArray(data) && data.length > 0) {
+      let { data, error } = await fetchGroups('id,name,grade_level,is_active,portal_join_enabled');
+
+      if (error && isMissingColumnError(error, 'portal_join_enabled')) {
+        const fallback = await fetchGroups('id,name,grade_level,is_active');
+        data = fallback.data;
+        error = fallback.error;
+      }
+
+      if (error) {
+        logPortalReadError('groups', { purpose: 'portal_join_groups' }, error);
+        return [];
+      }
+
+      if (Array.isArray(data)) {
         return data
+          .filter((row: any) => isPortalJoinEnabledValue(row?.portal_join_enabled))
           .map((row: any) => ({
             id: String(row?.id || ''),
             name: String(row?.name || '').trim(),

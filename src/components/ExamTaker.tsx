@@ -340,24 +340,27 @@ export default function ExamTaker({ exams, currentStudent, onAddGrade }: ExamTak
         /* VIEW A: CHOOSE TEST HUB */
         <div className="space-y-5">
           
-          <div className="bg-white/80 backdrop-blur-md dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-850/60 p-4.5 rounded-3xl shadow-[0_4px_18px_rgba(15,23,42,0.02)] space-y-4">
-            <div className="flex justify-between items-center pb-2 border-b border-gray-50 dark:border-slate-850/60 select-none">
-              <span className="text-[9px] font-mono text-indigo-650 dark:text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full">امتحانات اليوم</span>
-              <h3 className="text-xs font-black text-gray-950 dark:text-zinc-200">المركز التقييمي والامتحانات</h3>
+          <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-900 dark:from-slate-900 dark:via-indigo-950 dark:to-slate-955 text-white rounded-[28px] p-4.5 relative overflow-hidden shadow-lg border border-white/5 dark:border-white/5 space-y-4">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/15 dark:bg-indigo-505/15 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-10 -left-10 w-44 h-44 bg-emerald-500/10 dark:bg-emerald-505/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="flex justify-between items-center pb-2 border-b border-white/10 select-none">
+              <span className="text-[9px] font-mono text-indigo-200 bg-white/10 px-2 py-0.5 rounded-full">امتحانات اليوم</span>
+              <h3 className="text-xs font-black text-white">المركز التقييمي والامتحانات</h3>
             </div>
 
-            <p className="text-xs text-neutral-455 dark:text-slate-300 leading-relaxed font-sans">
+            <p className="text-xs text-indigo-100/80 leading-relaxed font-sans">
               يرجى التأكد من جاهزية بيئة الامتحان قبل البدء. يُجرى الامتحان في بيئة هادئة ومستقرة، ويستخدم النظام تقنيات مراقبة ذكية لرصد أي مخالفات محتملة، بما يضمن نزاهة الامتحان وتكافؤ الفرص بين جميع الطلاب.
             </p>
           </div>
 
-          <div className="space-y-3">
-            <h3 className="text-xs font-black text-gray-500 select-none font-sans tracking-wide">الامتحانات المجدولة لمسيرتك الأكاديمية</h3>
+          <div className="space-y-3 relative">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
+            <h3 className="text-xs font-black text-gray-500 select-none font-sans tracking-wide relative">الامتحانات المجدولة لمسيرتك الأكاديمية</h3>
 
             {exams.map((exam) => (
               <div 
                 key={exam.id}
-                className="p-4 bg-white/80 backdrop-blur-sm dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-850/60 rounded-2.5xl relative overflow-hidden flex flex-col gap-3.5 shadow-[0_2px_10px_rgba(15,23,42,0.012)] hover:shadow-[0_6px_20px_rgba(15,23,42,0.025)] hover:border-indigo-400 dark:hover:border-indigo-505/30 transition-all duration-300"
+                className="p-4 bg-white/80 backdrop-blur-sm dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-850/60 rounded-3xl relative overflow-hidden flex flex-col gap-3.5 shadow-[0_2px_10px_rgba(15,23,42,0.012)] hover:shadow-[0_6px_20px_rgba(15,23,42,0.025)] hover:border-indigo-400 dark:hover:border-indigo-505/30 transition-all duration-300"
               >
                 <div className="flex justify-between items-start">
                   <div className="text-right">
@@ -398,7 +401,9 @@ export default function ExamTaker({ exams, currentStudent, onAddGrade }: ExamTak
 
           {/* COMPACT COMPLETED ATTEMPT STATS VIEW */}
           {completedAttempt && (
-            <div className="p-4.5 bg-gradient-to-tr from-emerald-500/5 via-teal-900/10 to-transparent border border-emerald-500/20 rounded-3xl space-y-3.5">
+            <div className="p-4.5 bg-gradient-to-tr from-emerald-500/5 via-teal-900/10 to-transparent border border-emerald-500/20 rounded-3xl space-y-3.5 relative overflow-hidden">
+              <div className="absolute -top-6 -right-6 w-28 h-28 bg-emerald-400/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-6 -left-6 w-28 h-28 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
               <div className="flex items-center gap-2 text-right">
                 <Award className="w-5 h-5 text-emerald-500 animate-bounce" />
                 <div className="text-right">

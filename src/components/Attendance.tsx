@@ -162,6 +162,7 @@ export default function Attendance({ records }: AttendanceProps) {
 
       <div className="bg-white/80 backdrop-blur-md dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-850/60 p-5 rounded-3xl shadow-[0_4px_18px_rgba(15,23,42,0.02)] space-y-4 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-emerald-500/5 to-transparent rounded-full blur-xl" />
+        <div className="absolute -bottom-6 -left-6 w-28 h-28 bg-indigo-500/5 dark:bg-indigo-505/5 rounded-full blur-2xl pointer-events-none" />
 
         <div className="pb-2 border-b border-gray-100/60 dark:border-slate-850/50 select-none space-y-1">
           <h3 className="text-xs font-black text-indigo-600 dark:text-indigo-400">الخريطة الحرارية الموحدة (آخر 28 سجل)</h3>
@@ -204,7 +205,8 @@ export default function Attendance({ records }: AttendanceProps) {
         </div>
       </div>
 
-      <div className="bg-white/80 backdrop-blur-md dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-850/60 p-4.5 rounded-3xl space-y-3.5 shadow-[0_4px_18px_rgba(15,23,42,0.02)]">
+      <div className="bg-white/80 backdrop-blur-md dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-850/60 p-4.5 rounded-3xl space-y-3.5 shadow-[0_4px_18px_rgba(15,23,42,0.02)] relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-28 h-28 bg-gradient-to-br from-amber-500/5 to-transparent rounded-full blur-2xl pointer-events-none" />
         <div className="relative">
           <label htmlFor="attendance-search" className="sr-only">البحث في سجلات الحضور</label>
           <input

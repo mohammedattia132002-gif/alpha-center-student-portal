@@ -626,19 +626,22 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
     <div className="space-y-6 lg:space-y-8 text-right md:px-2 animate-in fade-in duration-550" id="mobile-payments-portal">
 
-      <div className="bg-white/80 backdrop-blur-md dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-850/60 rounded-[28px] p-6 shadow-[0_4px_18px_rgba(15,23,42,0.01)] space-y-4">
+      <div className="bg-gradient-to-br from-emerald-600 via-emerald-700 to-indigo-900 dark:from-slate-900 dark:via-emerald-950 dark:to-slate-955 text-white rounded-[28px] p-6 relative overflow-hidden shadow-lg border border-white/5 dark:border-white/5 space-y-4">
 
-        <div className="flex justify-between items-center pb-3 border-b border-gray-100/60 dark:border-slate-850/50">
+        <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/15 dark:bg-emerald-505/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-10 -left-10 w-44 h-44 bg-indigo-500/10 dark:bg-indigo-505/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="flex justify-between items-center pb-3 border-b border-white/10">
 
           <div className="text-right">
 
-            <h3 className="text-xs font-black text-slate-800 dark:text-zinc-150 font-sans">حالة الرسوم والبنود المالية</h3>
+            <h3 className="text-xs font-black text-white font-sans">حالة الرسوم والبنود المالية</h3>
 
-            <p className="text-[10px] text-neutral-450 dark:text-slate-300 mt-0.5">عرض متابعة فقط لفواتير سنتر {centerConfig.centerName}</p>
+            <p className="text-[10px] text-emerald-100/80 mt-0.5">عرض متابعة فقط لفواتير سنتر {centerConfig.centerName}</p>
 
           </div>
 
-          <div className="p-2 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-2xl border border-indigo-500/15">
+          <div className="p-2 bg-white/10 text-emerald-200 rounded-2xl border border-white/15">
 
             <Landmark className="w-5 h-5" />
 
@@ -650,11 +653,11 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
         <div className="space-y-3">
 
-          <div className="flex justify-between items-center text-xs text-slate-750 dark:text-slate-300 font-sans">
+          <div className="flex justify-between items-center text-xs text-emerald-100/90 font-sans">
 
             <span className="font-bold">
 
-              نسبة المسدد: <strong className="text-emerald-500 dark:text-emerald-400 font-extrabold font-mono text-sm">{paidPercent}%</strong>
+              نسبة المسدد: <strong className="text-emerald-300 font-extrabold font-mono text-sm">{paidPercent}%</strong>
 
             </span>
 
@@ -662,29 +665,29 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
 
 
-          <div className="w-full h-3 bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden border border-slate-200/50 dark:border-slate-850 p-0.5">
+          <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden border border-white/10 p-0.5">
 
-            <div className="h-full bg-gradient-to-r from-emerald-400 via-indigo-450 to-indigo-600 rounded-full transition-all duration-1000" style={{ width: `${paidPercent}%` }} />
+            <div className="h-full bg-gradient-to-r from-emerald-300 via-emerald-400 to-indigo-400 rounded-full transition-all duration-1000" style={{ width: `${paidPercent}%` }} />
 
           </div>
 
 
 
-          <div className="flex justify-between items-center text-xs pt-3 font-sans border-t border-slate-150/55 dark:border-slate-850/60 mt-2">
+          <div className="flex justify-between items-center text-xs pt-3 font-sans border-t border-white/10 mt-2">
 
             <div className="text-right">
 
-              <span className="text-[10px] text-neutral-450 dark:text-slate-300 block pb-0.5">المتبقي</span>
+              <span className="text-[10px] text-emerald-100/70 block pb-0.5">المتبقي</span>
 
-              <span className="font-bold text-amber-500 dark:text-amber-455 font-mono text-sm">{totalPending} ج.م</span>
+              <span className="font-bold text-amber-300 font-mono text-sm">{totalPending} ج.م</span>
 
             </div>
 
             <div className="text-left">
 
-              <span className="text-[10px] text-neutral-450 dark:text-slate-300 block pb-0.5 text-left font-sans">المتأخر</span>
+              <span className="text-[10px] text-emerald-100/70 block pb-0.5 text-left font-sans">المتأخر</span>
 
-              <span className="font-bold text-rose-500 dark:text-rose-455 text-sm">{totalOverdue} ج.م</span>
+              <span className="font-bold text-rose-300 text-sm">{totalOverdue} ج.م</span>
 
             </div>
 
@@ -700,7 +703,9 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
 
 
-      <div className="bg-white/80 backdrop-blur-md dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-850/60 p-4.5 rounded-3xl space-y-3.5 shadow-[0_4px_18px_rgba(15,23,42,0.02)]">
+      <div className="bg-white/80 backdrop-blur-md dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-850/60 p-4.5 rounded-3xl space-y-3.5 shadow-[0_4px_18px_rgba(15,23,42,0.02)] relative overflow-hidden">
+        <div className="absolute -top-8 right-1/3 w-28 h-28 bg-gradient-to-br from-emerald-500/5 to-transparent rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-indigo-500/5 dark:bg-indigo-505/5 rounded-full blur-2xl pointer-events-none" />
 
         <div className="relative">
 

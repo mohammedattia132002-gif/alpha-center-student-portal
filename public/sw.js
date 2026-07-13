@@ -1,4 +1,4 @@
-const CACHE = 'alpha-portal-static-v5';
+const CACHE = 'alpha-portal-static-v6';
 const APP_SHELL_URLS = [
   '/',
   '/index.html',
