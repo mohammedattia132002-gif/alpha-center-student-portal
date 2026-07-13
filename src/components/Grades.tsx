@@ -73,6 +73,30 @@ export default function Grades({ records, exams }: GradesProps) {
     }
   };
 
+  const getGradeEmoji = (letter: string): string => {
+    if (letter.startsWith('A')) return '🟢';
+    if (letter.startsWith('B')) return '🔵';
+    if (letter.startsWith('C')) return '🟠';
+    if (letter.startsWith('D')) return '🟡';
+    return '🔴';
+  };
+
+  const getGradeBadgeStyle = (letter: string): string => {
+    if (letter.startsWith('A')) return 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-600 dark:text-emerald-400';
+    if (letter.startsWith('B')) return 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/20 text-blue-600 dark:text-blue-400';
+    if (letter.startsWith('C')) return 'bg-orange-50 dark:bg-orange-500/10 border-orange-200 dark:border-orange-500/20 text-orange-600 dark:text-orange-400';
+    if (letter.startsWith('D')) return 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/20 text-amber-600 dark:text-amber-400';
+    return 'bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/20 text-rose-600 dark:text-rose-400';
+  };
+
+  const getGradeLabel = (letter: string): string => {
+    if (letter.startsWith('A')) return 'ممتاز';
+    if (letter.startsWith('B')) return 'جيد جداً';
+    if (letter.startsWith('C')) return 'جيد';
+    if (letter.startsWith('D')) return 'مقبول';
+    return 'ضعيف';
+  };
+
   const getExamModeLabel = (grade: GradeRecord) =>
     grade.examMode === 'electronic' ? 'إلكتروني' : 'ورقي / يدوي';
 
@@ -262,15 +286,17 @@ export default function Grades({ records, exams }: GradesProps) {
                     </div>
                   </div>
 
-                  <span className={`w-11 h-11 rounded-xl font-sans font-black text-base flex items-center justify-center border shrink-0 shadow-sm ${getLetterBadgeStyle(grade.gradeLetter)}`}>
-                    {grade.gradeLetter}
+                  {/* Grade badge */}
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold font-sans border shrink-0 ${getGradeBadgeStyle(grade.gradeLetter)}`}>
+                    {getGradeEmoji(grade.gradeLetter)}
+                    {getGradeLabel(grade.gradeLetter)}
                   </span>
                 </div>
 
                 {/* Score slider metrics */}
                 <div className="space-y-1.5 pt-1">
                   <div className="flex justify-between items-center text-[10px] text-slate-400 dark:text-slate-300 font-sans">
-                    <span>العلامة المحصلة: <strong className="text-slate-800 dark:text-white font-mono font-black">{grade.sourceExamId ? (questionCountByExam[grade.sourceExamId] ?? '—') : '—'} سؤال</strong></span>
+                    <span>العلامة المحصلة: <strong className="text-slate-800 dark:text-white font-mono font-black">{grade.score}</strong> / {grade.maxScore}</span>
                     <span>الوزن الأكاديمي: {grade.gpaWeight} pts</span>
                   </div>
 
