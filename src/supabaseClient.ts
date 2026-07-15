@@ -984,8 +984,8 @@ export const dbAdapter = {
         teacherCol: string;
         dayMap?: (v: string) => number;
       }> = [
-        { weekdayCol: 'weekday', teacherCol: 'teacher_name' },
         { weekdayCol: 'day', teacherCol: 'teacher', dayMap: dayNameToWeekday },
+        { weekdayCol: 'weekday', teacherCol: 'teacher_name' },
       ];
 
       let result: GroupTimeSlot[] | null = null;
@@ -1106,38 +1106,59 @@ export const dbAdapter = {
           .map((row) => safeUuid(row?.id))
           .filter((value): value is string => Boolean(value));
         const enrollmentMap = new Map(enrollmentRows.map((row) => [String(row.id), row]));
-        const attendanceQueryVariants: Array<(query: any) => any> = [
+        const primaryVariants: Array<(query: any) => any> = [
           (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId).is('deleted_at', null),
           (query) => query.eq('student_id', studentId).is('deleted_at', null),
         ];
-        if (enrollmentIds.length > 0) {
-          attendanceQueryVariants.push((query) =>
-            query.eq('tenant_id', PORTAL_TENANT_ID).in('enrollment_id', enrollmentIds).is('deleted_at', null),
-          );
-          attendanceQueryVariants.push((query) => query.in('enrollment_id', enrollmentIds).is('deleted_at', null));
-        }
 
-        const data = mergeRowsById(
-          (
-            await Promise.all(
-              attendanceQueryVariants.map((configure) =>
-                fetchRowsWithFallback<Record<string, any>>(
-                  client,
-                  'attendance',
-                  [configure],
-                  {
-                    orderVariants: [['attendance_date'], ['date'], ['recorded_at'], ['created_at'], []],
-                    continueOnEmpty: false,
-                    diagnosticContext: { studentId },
-                  },
-                ).catch((error) => {
-                  logPortalReadErrorUnlessMissingColumn('attendance', { studentId }, error, 'enrollment_id');
-                  return [] as Record<string, any>[];
-                }),
+        let data: Record<string, any>[] = [];
+        try {
+          const results = await Promise.all(
+            primaryVariants.map((configure) =>
+              fetchRowsWithFallback<Record<string, any>>(
+                client,
+                'attendance',
+                [configure],
+                {
+                  orderVariants: [['recorded_at'], ['created_at'], ['attendance_date'], ['date'], []],
+                  continueOnEmpty: false,
+                  diagnosticContext: { studentId },
+                },
               ),
-            )
-          ).flat(),
-        );
+            ),
+          );
+          data = mergeRowsById(results.flat());
+        } catch (error: any) {
+          const errMsg = String(error?.message || error?.code || '').toLowerCase();
+          if (errMsg.includes('student_id') || errMsg.includes('does not exist') || errMsg.includes('column')) {
+            if (enrollmentIds.length > 0) {
+              const fallbackVariants: Array<(query: any) => any> = [
+                (query) => query.eq('tenant_id', PORTAL_TENANT_ID).in('enrollment_id', enrollmentIds).is('deleted_at', null),
+                (query) => query.in('enrollment_id', enrollmentIds).is('deleted_at', null),
+              ];
+              const results = await Promise.all(
+                fallbackVariants.map((configure) =>
+                  fetchRowsWithFallback<Record<string, any>>(
+                    client,
+                    'attendance',
+                    [configure],
+                    {
+                      orderVariants: [['recorded_at'], ['created_at'], ['attendance_date'], ['date'], []],
+                      continueOnEmpty: false,
+                      diagnosticContext: { studentId },
+                    },
+                  ).catch((fallbackError) => {
+                    logPortalReadErrorUnlessMissingColumn('attendance', { studentId }, fallbackError, 'enrollment_id');
+                    return [] as Record<string, any>[];
+                  }),
+                ),
+              );
+              data = mergeRowsById(results.flat());
+            }
+          } else {
+            throw error;
+          }
+        }
 
         if (Array.isArray(data)) {
           const fallbackGroup = await resolveStudentGroupSummary(client, studentId).catch(() => null);

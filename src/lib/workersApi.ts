@@ -7,6 +7,7 @@ import {
   dbAdapter,
   isSupabaseConfigured,
 } from '../supabaseClient';
+import { getStoredStudent } from './portalStorage';
 import { AttendanceRecord, Exam, GradeRecord, GroupTimeSlot, PaymentRecord, StudentProfile } from '../types';
 import studentSnapshots from '../../data/student-snapshots.json';
 
@@ -237,9 +238,9 @@ export async function fetchExams(student: StudentProfile): Promise<Exam[]> {
   return withReadRetry('exams', () => dbAdapter.getExams(student));
 }
 
-export async function payInvoice(invoiceId: string, _amount?: number): Promise<{ success: boolean; error?: unknown }> {
+export async function payInvoice(invoiceId: string, amount?: number, student?: StudentProfile): Promise<{ success: boolean; error?: unknown }> {
   const paidDate = new Date().toISOString().slice(0, 10);
-  return dbAdapter.payInvoice(invoiceId, paidDate);
+  return dbAdapter.payInvoice(invoiceId, paidDate, student ?? getStoredStudent(), amount);
 }
 
 export async function submitJoinRequest(request: JoinRequestPayload): Promise<JoinRequestResponse> {

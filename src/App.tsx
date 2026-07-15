@@ -298,7 +298,7 @@ const [groupTimes, setGroupTimes] = useState<GroupTimeSlot[]>(() => []);
           if (paymentsResult.data) {
             setPayments(paymentsResult.data);
             const actualUnpaidSum = paymentsResult.data
-              .filter((p) => p.status === 'pending')
+              .filter((p) => p.status === 'pending' || p.status === 'partial' || p.status === 'overdue')
               .reduce((acc, p) => acc + p.amount, 0);
             setProfile(prev => ({ ...prev, unpaidFees: actualUnpaidSum }));
           }
@@ -351,6 +351,15 @@ const [groupTimes, setGroupTimes] = useState<GroupTimeSlot[]>(() => []);
                   id: notifId,
                   title: 'فاتورة قيد المتابعة',
                   message: `${payment.title} بقيمة ${payment.amount} ج.م - تاريخ الاستحقاق: ${payment.dueDate}`,
+                  category: 'payments',
+                  timestamp: payment.dueDate,
+                  read: false,
+                });
+              } else if (payment.status === 'partial' && !existingIds.has(notifId)) {
+                newNotifications.push({
+                  id: notifId,
+                  title: 'فاتورة مدفوعة جزئياً',
+                  message: `${payment.title} متبقي منها ${payment.amount} ج.م - تاريخ الاستحقاق: ${payment.dueDate}`,
                   category: 'payments',
                   timestamp: payment.dueDate,
                   read: false,

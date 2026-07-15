@@ -16,8 +16,11 @@ export function calculateAttendanceRate(attendance: AttendanceRecord[]): number 
     return 0
   }
 
-  const present = attendance.filter((record) => record.status === 'present').length
-  return Math.round((present / attendance.length) * 1000) / 10
+  // المتأخر (حضر فعلاً) يُحتسب في نسبة الانتظام تماماً كالحاضر
+  const attended = attendance.filter(
+    (record) => record.status === 'present' || record.status === 'late'
+  ).length
+  return Math.round((attended / attendance.length) * 1000) / 10
 }
 
 function getCommitmentStatus(rate: number): { label: string; emoji: string } {

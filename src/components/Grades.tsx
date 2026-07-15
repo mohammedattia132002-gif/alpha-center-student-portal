@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -24,6 +24,13 @@ export default function Grades({ records, exams }: GradesProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<'all' | 'exam' | 'final' | 'project'>('all');
   const [isLoading, setIsLoading] = useState(false);
+  const [chartReady, setChartReady] = useState(false);
+
+  // Set chart ready after short delay to prevent Recharts -1 width/height layout warning in hidden tabs
+  useEffect(() => {
+    const timer = setTimeout(() => setChartReady(true), 250);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Trigger skeleton loading on search & category switches
   useEffect(() => {
@@ -153,60 +160,67 @@ export default function Grades({ records, exams }: GradesProps) {
             <p className="text-[10px] text-slate-400 dark:text-slate-300 mt-1">سيظهر تطور مستواك بعد تسجيل نتائج الامتحانات</p>
           </div>
         ) : (
-          <div className="h-64 w-full text-ltr text-xs font-mono" dir="ltr">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={(() => {
-                  const sorted = [...records].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-                  return sorted.map((grade, idx) => ({
-                    name: `اختبار ${idx + 1}`,
-                    date: grade.date,
-                    "نسبة التحصيل %": Math.round((grade.score / grade.maxScore) * 100),
-                    score: grade.score,
-                    maxScore: grade.maxScore,
-                  }));
-                })()}
-                margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
-              >
-                <defs>
-                  <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#818cf8" stopOpacity={0.5} />
-                    <stop offset="100%" stopColor="#818cf8" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.08)" />
-                <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={10} domain={[0, 100]} tickLine={false} tickFormatter={(v) => `${v}%`} />
-                <Tooltip
-                  contentStyle={{
-                    background: '#1e293b',
-                    border: 'none',
-                    borderRadius: '12px',
-                    color: '#fff',
-                    textAlign: 'center',
-                    fontFamily: 'sans-serif',
-                    fontSize: '11px',
-                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)'
-                  }}
-                  labelFormatter={(label, payload) => {
-                    if (payload && payload[0]) return `${label} — ${payload[0].payload.date}`;
-                    return label;
-                  }}
-                  formatter={(value: number) => [`${value}%`, 'النتيجة']}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="نسبة التحصيل %"
-                  stroke="#818cf8"
-                  strokeWidth={2.5}
-                  fill="url(#trendGrad)"
-                  dot={{ r: 5, fill: '#818cf8', stroke: '#1e293b', strokeWidth: 2 }}
-                  activeDot={{ r: 7, fill: '#818cf8', stroke: '#fff', strokeWidth: 2 }}
-                  animationDuration={800}
-                  animationEasing="ease-out"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div className="h-64 w-full text-ltr text-xs font-mono relative" dir="ltr">
+            {chartReady ? (
+              <ResponsiveContainer width="100%" height="100%" minHeight={200}>
+                <AreaChart
+                  data={(() => {
+                    const sorted = [...records].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                    return sorted.map((grade, idx) => ({
+                      name: `اختبار ${idx + 1}`,
+                      date: grade.date,
+                      "نسبة التحصيل %": Math.round((grade.score / grade.maxScore) * 100),
+                      score: grade.score,
+                      maxScore: grade.maxScore,
+                    }));
+                  })()}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
+                >
+                  <defs>
+                    <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#818cf8" stopOpacity={0.5} />
+                      <stop offset="100%" stopColor="#818cf8" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.08)" />
+                  <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} />
+                  <YAxis stroke="#94a3b8" fontSize={10} domain={[0, 100]} tickLine={false} tickFormatter={(v) => `${v}%`} />
+                  <Tooltip
+                    contentStyle={{
+                      background: '#1e293b',
+                      border: 'none',
+                      borderRadius: '12px',
+                      color: '#fff',
+                      textAlign: 'center',
+                      fontFamily: 'sans-serif',
+                      fontSize: '11px',
+                      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)'
+                    }}
+                    labelFormatter={(label, payload) => {
+                      if (payload && payload[0]) return `${label} — ${payload[0].payload.date}`;
+                      return label;
+                    }}
+                    formatter={(value: number) => [`${value}%`, 'النتيجة']}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="نسبة التحصيل %"
+                    stroke="#818cf8"
+                    strokeWidth={2.5}
+                    fill="url(#trendGrad)"
+                    dot={{ r: 5, fill: '#818cf8', stroke: '#1e293b', strokeWidth: 2 }}
+                    activeDot={{ r: 7, fill: '#818cf8', stroke: '#fff', strokeWidth: 2 }}
+                    animationDuration={800}
+                    animationEasing="ease-out"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="absolute inset-0 flex flex-col items-center justify-center space-y-3 bg-slate-50/50 dark:bg-slate-900/10 rounded-2xl animate-pulse">
+                <TrendingUp className="w-8 h-8 text-indigo-400 animate-bounce" />
+                <span className="text-[11px] text-slate-400 font-sans">جاري رسم المخطط البياني...</span>
+              </div>
+            )}
           </div>
         )}
       </div>

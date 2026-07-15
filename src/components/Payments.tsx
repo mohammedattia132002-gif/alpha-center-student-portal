@@ -80,7 +80,7 @@ function InvoiceCountdown({ dueDateStr, status }: { dueDateStr: string; status: 
 
   useEffect(() => {
 
-    if (status !== 'pending') {
+    if (status !== 'pending' && status !== 'partial') {
 
       return;
 
@@ -277,6 +277,34 @@ function getStatusMeta(status: PaymentStatus) {
       className: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
 
       markerClass: 'bg-rose-500',
+
+    };
+
+  }
+
+  if (status === 'partial') {
+
+    return {
+
+      label: 'مدفوع جزئياً',
+
+      className: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20',
+
+      markerClass: 'bg-sky-500',
+
+    };
+
+  }
+
+  if (status === 'waived') {
+
+    return {
+
+      label: 'مُعفى',
+
+      className: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20',
+
+      markerClass: 'bg-violet-500',
 
     };
 
@@ -508,7 +536,7 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
   const totalPaid = records.filter((record) => record.status === 'paid').reduce((sum, record) => sum + record.amount, 0);
 
-  const totalPending = records.filter((record) => record.status === 'pending').reduce((sum, record) => sum + record.amount, 0);
+  const totalPending = records.filter((record) => record.status === 'pending' || record.status === 'partial').reduce((sum, record) => sum + record.amount, 0);
 
   const totalOverdue = records.filter((record) => record.status === 'overdue').reduce((sum, record) => sum + record.amount, 0);
 
@@ -520,7 +548,7 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
   const hasExpiringInvoice = records.some((invoice) => {
 
-    if (invoice.status !== 'pending') {
+    if (invoice.status !== 'pending' && invoice.status !== 'partial') {
 
       return false;
 
@@ -743,7 +771,11 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
             { tag: 'pending', title: 'قيد المتابعة' },
 
+            { tag: 'partial', title: 'مدفوعة جزئياً' },
+
             { tag: 'overdue', title: 'المتأخرة' },
+
+            { tag: 'waived', title: 'المُعفاة' },
 
           ].map((tab) => (
 
@@ -899,25 +931,39 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
                   <div className="flex items-center justify-between gap-2 pt-1">
 
-                    <button
+                    {invoice.status !== 'waived' && (
 
-                      onClick={() => {
+                      <button
 
-                        setSelectedInvoiceForInstructions(invoice);
+                        onClick={() => {
 
-                        playTapSound();
+                          setSelectedInvoiceForInstructions(invoice);
 
-                      }}
+                          playTapSound();
 
-                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl text-[11px] font-black bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                        }}
 
-                    >
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl text-[11px] font-black bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
 
-                      <HelpCircle className="w-3.5 h-3.5" />
+                      >
 
-                      <span>عرض تعليمات السداد</span>
+                        <HelpCircle className="w-3.5 h-3.5" />
 
-                    </button>
+                        <span>عرض تعليمات السداد</span>
+
+                      </button>
+
+                    )}
+
+                    {invoice.status === 'waived' && (
+
+                      <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl text-[11px] font-black bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-500/20">
+
+                        تم الإعفاء من هذا البند
+
+                      </span>
+
+                    )}
 
 
 

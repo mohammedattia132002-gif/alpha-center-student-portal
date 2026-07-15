@@ -38,7 +38,7 @@ export interface AttendanceRecord {
   remarks?: string;
 }
 
-export type PaymentStatus = 'paid' | 'pending' | 'overdue';
+export type PaymentStatus = 'paid' | 'pending' | 'partial' | 'overdue' | 'waived';
 export type PaymentMethod = 'credit_card' | 'fawry' | 'bank_transfer' | 'instapay' | 'mopy_pay';
 
 export interface PaymentRecord {
