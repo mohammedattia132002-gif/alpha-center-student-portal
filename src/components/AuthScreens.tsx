@@ -266,8 +266,8 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
       const apiRes = await submitJoinRequest({
         student_name: studentName || 'طالب جديد',
         student_code: activeShowJoinField('student_code') ? joinStudentCode.trim() : '',
-        phone: activeShowJoinField('student_phone') ? studentPhone.trim() : '',
-        parent_phone: activeShowJoinField('parent_phone') ? parentPhone.trim() : '',
+        phone: activeShowJoinField('student_phone') ? (studentPhone || parentPhone || 'غير محدد') : (parentPhone || studentPhone || 'غير محدد'),
+        parent_phone: activeShowJoinField('parent_phone') ? (parentPhone || studentPhone || 'غير محدد') : (studentPhone || parentPhone || 'غير محدد'),
         grade: activeShowJoinField('grade') ? grade : 'غير محدد',
         academic_stage: activeShowJoinField('academic_stage') ? academicStage : 'غير محدد',
         academic_group: activeShowJoinField('academic_group') ? (academicGroup || 'غير محدد') : 'غير محدد',
