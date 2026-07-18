@@ -9,6 +9,7 @@
     <meta name="bingbot" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta name="format-detection" content="telephone=no" />
+    <meta name="color-scheme" content="dark" />
     <meta name="theme-color" content="#0f172a" />
     <meta name="application-name" content="سنتر الألفا-بوابة الطالب" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -132,6 +133,64 @@
           navigator.serviceWorker.register('/sw.js').catch(function () {});
         });
       }
+      (function() {
+        var deferredPrompt = null;
+        var installBanner = null;
+        var bannerShownThisSession = false;
+
+        function createInstallBanner() {
+          if (installBanner) return;
+          installBanner = document.createElement('div');
+          installBanner.id = 'pwa-install-banner';
+          installBanner.setAttribute('dir', 'rtl');
+          installBanner.innerHTML =
+            '<div class="pwa-install-content">' +
+              '<div class="pwa-install-icon">📲</div>' +
+              '<div class="pwa-install-text">' +
+                '<span class="pwa-install-title">ثبّت بوابة الطالب</span>' +
+                '<span class="pwa-install-desc">يمكنك تثبيت البوابة على شاشتك الرئيسية لتصفح أسرع</span>' +
+              '</div>' +
+              '<div class="pwa-install-actions">' +
+                '<button class="pwa-install-btn" id="pwa-install-btn">تثبيت</button>' +
+                '<button class="pwa-install-close" id="pwa-install-close">✕</button>' +
+              '</div>' +
+            '</div>';
+          document.body.appendChild(installBanner);
+
+          document.getElementById('pwa-install-btn').addEventListener('click', function() {
+            if (deferredPrompt) {
+              deferredPrompt.prompt();
+              deferredPrompt.userChoice.then(function(choiceResult) {
+                if (choiceResult.outcome === 'accepted') {
+                  if (installBanner) installBanner.style.display = 'none';
+                }
+                deferredPrompt = null;
+              });
+            }
+          });
+
+          document.getElementById('pwa-install-close').addEventListener('click', function() {
+            if (installBanner) installBanner.style.display = 'none';
+            bannerShownThisSession = true;
+          });
+        }
+
+        window.addEventListener('beforeinstallprompt', function(e) {
+          e.preventDefault();
+          deferredPrompt = e;
+          if (!bannerShownThisSession) {
+            createInstallBanner();
+            setTimeout(function() {
+              if (installBanner) installBanner.classList.add('pwa-install-visible');
+            }, 1000);
+          }
+        });
+
+        window.addEventListener('appinstalled', function() {
+          deferredPrompt = null;
+          if (installBanner) installBanner.style.display = 'none';
+        });
+      })();
     </script>
   </body>
 </html>

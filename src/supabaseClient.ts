@@ -4,8 +4,13 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { StudentProfile, AttendanceRecord, PaymentRecord, GradeRecord, Exam, ExamAttempt, ExamQuestion, AttendanceStatus, GroupTimeSlot } from './types';
+import { StudentProfile, AttendanceRecord, PaymentRecord, PaymentStatus, GradeRecord, Exam, ExamAttempt, ExamQuestion, AttendanceStatus, GroupTimeSlot } from './types';
 import { fetchAllRows } from './lib/supabasePagination';
+import {
+  mapFinancialObligationToPaymentRecord,
+  outstandingBalanceFromFinancialObligations,
+  type PortalFinancialObligationRow,
+} from './financialObligations';
 
 // Read configuration gracefully from import.meta.env
 const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || '';
@@ -291,12 +296,6 @@ function matchesPhoneValue(value: unknown, input: string): boolean {
   );
 }
 
-function outstandingBalanceFromStudent(row: Record<string, any> | null | undefined): number {
-  const amount = Number(row?.balance ?? 0);
-  if (!Number.isFinite(amount)) return 0;
-  return amount < 0 ? Math.abs(amount) : 0;
-}
-
 function formatDateOnly(value: unknown): string {
   if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
     return value.slice(0, 10);
@@ -380,9 +379,17 @@ function nowEpochMs(): number {
   return Date.now();
 }
 
-function toPaymentStatus(value: unknown): 'paid' | 'pending' | 'overdue' {
+function toPaymentStatus(value: unknown): PaymentStatus {
   const token = String(value ?? '').trim().toLowerCase();
-  if (token === 'pending' || token === 'overdue' || token === 'paid') return token;
+  if (
+    token === 'pending' ||
+    token === 'partial' ||
+    token === 'overdue' ||
+    token === 'waived' ||
+    token === 'paid'
+  ) {
+    return token;
+  }
   return token ? 'paid' : 'pending';
 }
 
@@ -491,6 +498,27 @@ async function fetchRowsWithFallback<T = any>(
   }
   if (lastError) throw lastError;
   return [];
+}
+
+async function fetchFinancialObligations(
+  client: any,
+  studentId: string,
+): Promise<PortalFinancialObligationRow[]> {
+  return fetchRowsWithFallback<PortalFinancialObligationRow>(
+    client,
+    'financial_obligations',
+    [
+      (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId).is('deleted_at', null),
+      (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId),
+      (query) => query.eq('student_id', studentId).is('deleted_at', null),
+      (query) => query.eq('student_id', studentId),
+    ],
+    {
+      orderVariants: [['due_date'], ['month_key'], ['created_at'], []],
+      continueOnEmpty: true,
+      diagnosticContext: { studentId },
+    },
+  );
 }
 
 // app_settings.setting_value is a JSON column. The desktop stores plain scalar strings,
@@ -729,6 +757,13 @@ async function resolvePlatformQuestionImage(
 
 async function buildStudentProfile(client: any, studentRow: Record<string, any>): Promise<StudentProfile> {
   const groupName = await resolveGroupName(client, studentRow);
+  let obligations: PortalFinancialObligationRow[] = [];
+  try {
+    obligations = await fetchFinancialObligations(client, String(studentRow.id || ''));
+  } catch (error) {
+    logPortalReadError('financial_obligations', { studentId: studentRow.id }, error);
+  }
+
   return {
     id: String(studentRow.id || ''),
     name: String(studentRow.name || 'طالب'),
@@ -737,7 +772,7 @@ async function buildStudentProfile(client: any, studentRow: Record<string, any>)
     academicYear: String(studentRow.grade_level || 'غير محدد'),
     gpa: 0,
     totalCredits: 0,
-    unpaidFees: outstandingBalanceFromStudent(studentRow),
+    unpaidFees: outstandingBalanceFromFinancialObligations(obligations),
     attendanceRate: 100,
     studentCode: String(studentRow.student_code || ''),
     studentPhone: normalizePhoneNumber(studentRow.phone) || undefined,
@@ -1223,17 +1258,15 @@ export const dbAdapter = {
   // Load payments
   async getPayments(studentId: string): Promise<PaymentRecord[]> {
     let finalRecords: PaymentRecord[] = [];
-    let isOutstanding = false;
-    let outstandingAmt = 0;
-    let studentCode = '';
     
     if (isSupabaseConfigured()) {
       const client = getSupabase();
       try {
         let paymentRows: Record<string, any>[] = [];
+        let obligationRows: PortalFinancialObligationRow[] = [];
 
-        try {
-          paymentRows = await fetchRowsWithFallback<Record<string, any>>(
+        const [paymentsResult, obligationsResult] = await Promise.allSettled([
+          fetchRowsWithFallback<Record<string, any>>(
             client,
             'payments',
             [
@@ -1247,34 +1280,19 @@ export const dbAdapter = {
               continueOnEmpty: true,
               diagnosticContext: { studentId },
             },
-          );
-        } catch (error) {
-          logPortalReadError('payments', { studentId }, error);
-        }
+          ),
+          fetchFinancialObligations(client, studentId),
+        ]);
 
-        let studentRow: Record<string, any> | null = null;
-        try {
-          const studentRowResult = await client
-            .from('students')
-            .select('id,student_code,balance')
-            .eq('tenant_id', PORTAL_TENANT_ID)
-            .eq('id', studentId)
-            .maybeSingle();
-          if (studentRowResult.error) {
-            console.warn('[portal] optional student balance read failed:', studentRowResult.error);
-          } else {
-            studentRow = studentRowResult.data;
-          }
-        } catch (error) {
-          console.warn('[portal] optional student balance read failed:', error);
+        if (paymentsResult.status === 'fulfilled') {
+          paymentRows = paymentsResult.value;
+        } else {
+          logPortalReadError('payments', { studentId }, paymentsResult.reason);
         }
-
-        if (studentRow) {
-          studentCode = (studentRow as any).student_code || '';
-          outstandingAmt = outstandingBalanceFromStudent(studentRow as Record<string, any>);
-          if (outstandingAmt > 0) {
-            isOutstanding = true;
-          }
+        if (obligationsResult.status === 'fulfilled') {
+          obligationRows = obligationsResult.value;
+        } else {
+          logPortalReadError('financial_obligations', { studentId }, obligationsResult.reason);
         }
 
         const mapPaymentRow = (row: Record<string, any>): PaymentRecord => {
@@ -1290,26 +1308,23 @@ export const dbAdapter = {
             status,
             invoiceNo: String(row.receipt_no || row.receipt_id || row.transaction_id || row.id),
             category: inferPaymentCategory(title),
+            recordType: 'payment',
+            obligationId: String(row.obligation_id || '').trim() || undefined,
           };
         };
 
         const directPaymentRecords = paymentRows.map(mapPaymentRow);
-        finalRecords = mergePaymentRecords(directPaymentRecords);
+        const obligationRecords = obligationRows
+          .filter((row) => !row.deleted_at)
+          .map((row) => mapFinancialObligationToPaymentRecord(row));
+
+        finalRecords = mergePaymentRecords([
+          ...obligationRecords,
+          ...directPaymentRecords,
+        ]);
       } catch (e) {
         logPortalReadError('payments', { studentId }, e);
       }
-    }
-
-    if (isOutstanding && !finalRecords.some((row) => row.status === 'pending' || row.status === 'overdue')) {
-      finalRecords.unshift({
-        id: `balance-${studentId}`,
-        title: 'رصيد مستحق',
-        amount: outstandingAmt,
-        dueDate: new Date().toISOString().slice(0, 10),
-        status: 'pending',
-        invoiceNo: `BAL-${String(studentCode || studentId).slice(-6).toUpperCase()}`,
-        category: 'tuition',
-      });
     }
 
     if (finalRecords.length > 0) {
@@ -1415,21 +1430,39 @@ export const dbAdapter = {
     return { success: false, error: 'Supabase is not configured.' };
   },
 
-  // Pay Invoice
-  async payInvoice(invoiceId: string, paidDate: string): Promise<{ success: boolean; error?: any }> {
+  // Pay an obligation through the verified atomic portal RPC.
+  async payInvoice(
+    invoiceId: string,
+    paidDate: string,
+    student?: StudentProfile,
+    amount?: number,
+  ): Promise<{ success: boolean; error?: any }> {
     if (isSupabaseConfigured()) {
       const client = getSupabase();
       try {
-        const { error } = await client
-          .from('payments')
-          .update({
-            status: 'paid',
-            paid_at: new Date(`${paidDate}T12:00:00`).toISOString(),
-            updated_at: nowEpochMs(),
-          })
-          .eq('tenant_id', PORTAL_TENANT_ID)
-          .eq('id', invoiceId);
-        if (!error) return { success: true };
+        const studentId = String(student?.id || '').trim();
+        const studentCode = String(student?.studentCode || '').trim();
+        const studentPhone = String(student?.studentPhone || student?.parentPhone || '').trim();
+        if (!studentId || !studentCode || !studentPhone) {
+          return { success: false, error: 'portal_payment_verification_required' };
+        }
+
+        const normalizedAmount = amount === undefined ? null : Number(amount);
+        if (normalizedAmount !== null && (!Number.isFinite(normalizedAmount) || normalizedAmount <= 0)) {
+          return { success: false, error: 'payment_amount_invalid' };
+        }
+
+        const { data, error } = await client.rpc('portal_pay_invoice', {
+          p_tenant_id: PORTAL_TENANT_ID,
+          p_invoice_id: String(invoiceId || '').trim(),
+          p_paid_at: new Date(`${paidDate}T12:00:00`).toISOString(),
+          p_student_id: studentId,
+          p_student_code: studentCode,
+          p_student_phone: studentPhone,
+          p_amount: normalizedAmount,
+        });
+        if (!error && data === true) return { success: true };
+        if (!error) return { success: false, error: 'portal_payment_not_applied' };
         console.error('Error paying invoice in Supabase:', error);
         return { success: false, error };
       } catch (e) {

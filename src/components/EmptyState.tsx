@@ -1,4 +1,4 @@
-﻿﻿import { motion } from 'motion/react'
+﻿import { motion } from 'motion/react'
 
 interface EmptyStateProps {
   icon?: string
@@ -22,8 +22,8 @@ export default function EmptyState({
       aria-live="polite"
     >
       <span className="text-3xl opacity-45 select-none mb-2" aria-hidden="true">{icon}</span>
-      <span className="text-xs font-bold text-slate-600 dark:text-slate-300 select-none">{title}</span>
-      <span className="text-[11px] text-slate-500 dark:text-slate-300 mt-1 px-4 leading-relaxed select-none">{description}</span>
+      <span className="text-xs font-bold text-slate-300 select-none">{title}</span>
+      <span className="text-[11px] text-slate-300 mt-1 px-4 leading-relaxed select-none">{description}</span>
     </motion.div>
   )
 }

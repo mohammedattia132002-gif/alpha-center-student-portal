@@ -61,7 +61,7 @@ export default function Dashboard({ profile, attendance, grades, groupTimes, onN
   if (isLoading && !hasExistingData) {
     return (
       <div className="space-y-6 text-right md:px-2 animate-in fade-in duration-500" id="mobile-home-dashboard">
-        <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-900 dark:from-indigo-950 dark:via-slate-900 dark:to-slate-955 rounded-3xl p-6 text-white relative overflow-hidden border border-white/5 dark:border-white/5 shadow-xl shadow-indigo-950/10 animate-pulse">
+        <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-955 rounded-3xl p-6 text-white relative overflow-hidden border border-white/5 shadow-xl shadow-indigo-950/10 animate-pulse">
           <div className="h-6 w-1/3 bg-white/10 rounded-lg mb-4" />
           <div className="h-4 w-1/2 bg-white/10 rounded-lg mb-2" />
           <div className="h-8 w-3/4 bg-white/10 rounded-lg" />
@@ -78,7 +78,7 @@ export default function Dashboard({ profile, attendance, grades, groupTimes, onN
   if (fetchError) {
     return (
       <div className="space-y-6 text-right md:px-2 animate-in fade-in duration-500" id="mobile-home-dashboard">
-        <div className="bg-rose-500/10 border border-rose-500/20 p-6 rounded-3xl text-rose-600 dark:text-rose-400 text-center">
+        <div className="bg-rose-500/10 border border-rose-500/20 p-6 rounded-3xl text-rose-400 text-center">
           <AlertCircle className="w-10 h-10 mx-auto mb-3" />
           <h3 className="text-sm font-black mb-1">تعذر تحميل البيانات</h3>
           <p className="text-xs leading-relaxed">{fetchError}</p>
@@ -93,7 +93,7 @@ export default function Dashboard({ profile, attendance, grades, groupTimes, onN
       
       {isLoading && hasExistingData && (
         <div
-          className="flex items-center gap-2 p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-xs text-right mb-2"
+          className="flex items-center gap-2 p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs text-right mb-2"
           role="status"
           aria-live="polite"
         >
@@ -106,10 +106,10 @@ export default function Dashboard({ profile, attendance, grades, groupTimes, onN
       )}
 
 {/* 1. EMOTIONAL WELCOME */}
-      <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-900 dark:from-indigo-950 dark:via-slate-900 dark:to-slate-955 rounded-3xl p-6 text-white relative overflow-hidden border border-white/5 dark:border-white/5 shadow-xl shadow-indigo-950/10">
+      <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-955 rounded-3xl p-6 text-white relative overflow-hidden border border-white/5 shadow-xl shadow-indigo-950/10">
         {/* Glow orbs background decoration */}
-        <div className="absolute top-0 right-0 w-44 h-44 bg-indigo-400/20 dark:bg-indigo-505/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-10 -left-10 w-44 h-44 bg-purple-400/15 dark:bg-purple-505/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 w-44 h-44 bg-indigo-505/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-10 -left-10 w-44 h-44 bg-purple-505/15 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 space-y-4">
           <div className="flex justify-between items-center">
@@ -264,8 +264,8 @@ export default function Dashboard({ profile, attendance, grades, groupTimes, onN
           {/* GROUP SCHEDULE CARD */}
           <div className="bg-bg-card backdrop-blur-md border border-border-card p-5 rounded-3xl shadow-[0_4px_18px_rgba(15,23,42,0.02)] relative overflow-hidden">
             <div className="absolute top-0 left-0 w-24 h-24 bg-gradient-to-br from-indigo-500/5 to-transparent rounded-full blur-xl" />
-            <div className="absolute -bottom-6 -right-6 w-28 h-28 bg-emerald-500/5 dark:bg-emerald-505/5 rounded-full blur-2xl pointer-events-none" />
-            <div className="flex items-center gap-2 border-b border-gray-100/60 dark:border-slate-850/50 pb-3 mb-4">
+            <div className="absolute -bottom-6 -right-6 w-28 h-28 bg-emerald-505/5 rounded-full blur-2xl pointer-events-none" />
+            <div className="flex items-center gap-2 border-b border-slate-850/50 pb-3 mb-4">
               <Calendar className="w-5 h-5 text-indigo-500" />
               <div className="text-right flex-1">
                 <h3 className="text-xs font-black text-text-primary">مواعيد المجموعة</h3>
@@ -275,7 +275,7 @@ export default function Dashboard({ profile, attendance, grades, groupTimes, onN
 
             {groupTimes.length === 0 ? (
               <div className="py-4 text-center">
-                <Clock className="w-8 h-8 text-neutral-300 dark:text-slate-700 mx-auto mb-2" />
+                <Clock className="w-8 h-8 text-slate-700 mx-auto mb-2" />
                 <p className="text-xs text-text-muted font-sans">لم يتم تحديد مواعيد للمجموعة بعد</p>
               </div>
             ) : (
@@ -296,7 +296,7 @@ export default function Dashboard({ profile, attendance, grades, groupTimes, onN
                     .join(' - ');
 
                   return (
-                  <div key={slot.id} className="p-3.5 bg-neutral-50/60 dark:bg-slate-950/40 rounded-2xl border border-border-card hover:bg-neutral-100/50 dark:hover:bg-slate-900/55 transition-all duration-200">
+                  <div key={slot.id} className="p-3.5 bg-slate-950/40 rounded-2xl border border-border-card hover:bg-slate-900/55 transition-all duration-200">
                     <div className="flex items-center justify-between gap-2 mb-2">
                       <div className="flex items-center gap-2 min-w-0">
                       <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
@@ -333,9 +333,9 @@ export default function Dashboard({ profile, attendance, grades, groupTimes, onN
           {/* 4. ATTENDANCE & GRADES SUMMARY TIMELINE - NOTION STYLED PANEL */}
           <div className="bg-bg-card backdrop-blur-md border border-border-card p-5 rounded-3xl space-y-4 shadow-[0_4px_18px_rgba(15,23,42,0.02)] relative overflow-hidden">
             <div className="absolute bottom-0 right-0 w-24 h-24 bg-gradient-to-tr from-emerald-500/5 to-transparent rounded-full blur-xl" />
-            <div className="absolute -top-6 -left-6 w-28 h-28 bg-indigo-500/5 dark:bg-indigo-505/5 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute -top-6 -left-6 w-28 h-28 bg-indigo-505/5 rounded-full blur-2xl pointer-events-none" />
             
-            <div className="flex justify-between items-center border-b border-gray-100/60 dark:border-slate-850/50 pb-2">
+            <div className="flex justify-between items-center border-b border-slate-850/50 pb-2">
               <h3 className="text-xs font-black text-text-primary flex items-center gap-2">
                 <Activity className="w-4 h-4 text-emerald-550 animate-pulse" />
                 <span>جدول الحضور والمتابعة للمحاضرات</span>
@@ -345,7 +345,7 @@ export default function Dashboard({ profile, attendance, grades, groupTimes, onN
 
             <div className="space-y-3">
               {lastAttendance.map((log) => (
-                <div key={log.id} className="p-3.5 bg-neutral-50/60 dark:bg-slate-950/40 rounded-2xl flex items-center justify-between border border-border-card transition-all duration-200 hover:bg-neutral-100/50 dark:hover:bg-slate-900/55">
+                <div key={log.id} className="p-3.5 bg-slate-950/40 rounded-2xl flex items-center justify-between border border-border-card transition-all duration-200 hover:bg-slate-900/55">
                   
                   <div className="flex items-center gap-2.5">
                     <span className={`w-2.5 h-2.5 rounded-full ${
@@ -361,8 +361,8 @@ export default function Dashboard({ profile, attendance, grades, groupTimes, onN
                   </div>
 
                   <span className={`text-[10px] font-black px-2.5 pb-0.5 pt-1 rounded-xl ${
-                    log.status === 'present' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
-                    log.status === 'late' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' :
+                    log.status === 'present' ? 'bg-emerald-500/10 text-emerald-400' :
+                    log.status === 'late' ? 'bg-amber-500/10 text-amber-400' :
                     log.status === 'excused' ? 'bg-indigo-500/10 text-indigo-500' : 'bg-rose-500/10 text-rose-600'
                   }`}>
                     {log.status === 'present' ? 'حاضر' :

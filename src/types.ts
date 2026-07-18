@@ -45,11 +45,16 @@ export interface PaymentRecord {
   id: string;
   title: string;
   amount: number;
+  amountDue?: number;
+  paidAmount?: number;
+  remainingAmount?: number;
   dueDate: string;
   paidDate?: string;
   status: PaymentStatus;
   invoiceNo: string;
   category: 'tuition' | 'exam_fees' | 'books' | 'activities';
+  recordType?: 'charge' | 'payment';
+  obligationId?: string;
 }
 
 export interface GradeRecord {

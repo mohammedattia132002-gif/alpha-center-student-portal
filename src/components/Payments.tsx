@@ -182,7 +182,7 @@ function InvoiceCountdown({ dueDateStr, status }: { dueDateStr: string; status: 
 
     return (
 
-      <div className="mt-2 flex items-center gap-2 px-3.5 py-2.5 rounded-2xl border font-sans text-[11px] font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 shadow-inner">
+      <div className="mt-2 flex items-center gap-2 px-3.5 py-2.5 rounded-2xl border font-sans text-[11px] font-bold bg-rose-500/10 text-rose-400 border-rose-500/20 shadow-inner">
 
         <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
 
@@ -200,7 +200,7 @@ function InvoiceCountdown({ dueDateStr, status }: { dueDateStr: string; status: 
 
     return (
 
-      <div className="mt-2 flex items-center gap-2 px-3.5 py-2.5 rounded-2xl border font-sans text-[11px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20 shadow-inner">
+      <div className="mt-2 flex items-center gap-2 px-3.5 py-2.5 rounded-2xl border font-sans text-[11px] font-bold bg-indigo-500/10 text-indigo-400 border-indigo-500/20 shadow-inner">
 
         <Calendar className="w-3.5 h-3.5 shrink-0" />
 
@@ -220,7 +220,7 @@ function InvoiceCountdown({ dueDateStr, status }: { dueDateStr: string; status: 
 
   return (
 
-    <div className="mt-2 flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-2xl border font-sans text-[11px] font-bold transition-all shadow-inner bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">
+    <div className="mt-2 flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-2xl border font-sans text-[11px] font-bold transition-all shadow-inner bg-amber-500/10 text-amber-400 border-amber-500/20">
 
       <div className="flex items-center gap-1.5 text-right flex-1">
 
@@ -232,7 +232,7 @@ function InvoiceCountdown({ dueDateStr, status }: { dueDateStr: string; status: 
 
 
 
-      <span className="bg-amber-500/20 dark:bg-amber-500/30 px-2 py-0.5 rounded-lg text-amber-700 dark:text-amber-300 font-mono tracking-wider">
+      <span className="bg-amber-500/30 px-2 py-0.5 rounded-lg text-amber-300 font-mono tracking-wider">
 
         {String(timeLeft.hours).padStart(2, '0')}:
 
@@ -258,7 +258,7 @@ function getStatusMeta(status: PaymentStatus) {
 
       label: 'مسدد',
 
-      className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+      className: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
 
       markerClass: 'bg-emerald-500',
 
@@ -274,7 +274,7 @@ function getStatusMeta(status: PaymentStatus) {
 
       label: 'متأخر',
 
-      className: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
+      className: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
 
       markerClass: 'bg-rose-500',
 
@@ -288,7 +288,7 @@ function getStatusMeta(status: PaymentStatus) {
 
       label: 'مدفوع جزئياً',
 
-      className: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20',
+      className: 'bg-sky-500/10 text-sky-400 border-sky-500/20',
 
       markerClass: 'bg-sky-500',
 
@@ -302,7 +302,7 @@ function getStatusMeta(status: PaymentStatus) {
 
       label: 'مُعفى',
 
-      className: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20',
+      className: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
 
       markerClass: 'bg-violet-500',
 
@@ -316,7 +316,7 @@ function getStatusMeta(status: PaymentStatus) {
 
     label: 'قيد المتابعة',
 
-    className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+    className: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
 
     markerClass: 'bg-amber-500',
 
@@ -534,13 +534,27 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
   const supportPhone = centerConfig.phoneNumber.trim();
 
-  const totalPaid = records.filter((record) => record.status === 'paid').reduce((sum, record) => sum + record.amount, 0);
+  const chargeRecords = records.filter((record) => record.recordType === 'charge');
+  const totalPaid = chargeRecords.length > 0
+    ? chargeRecords.reduce(
+        (sum, record) => sum + Math.min(record.amountDue ?? record.amount, record.paidAmount ?? 0),
+        0,
+      )
+    : records
+        .filter((record) => record.recordType === 'payment' && record.status === 'paid')
+        .reduce((sum, record) => sum + record.amount, 0);
 
-  const totalPending = records.filter((record) => record.status === 'pending' || record.status === 'partial').reduce((sum, record) => sum + record.amount, 0);
+  const totalPending = chargeRecords
+    .filter((record) => record.status === 'pending' || record.status === 'partial')
+    .reduce((sum, record) => sum + record.amount, 0);
 
-  const totalOverdue = records.filter((record) => record.status === 'overdue').reduce((sum, record) => sum + record.amount, 0);
+  const totalOverdue = chargeRecords
+    .filter((record) => record.status === 'overdue')
+    .reduce((sum, record) => sum + record.amount, 0);
 
-  const totalFees = records.reduce((sum, record) => sum + record.amount, 0);
+  const totalFees = chargeRecords.length > 0
+    ? chargeRecords.reduce((sum, record) => sum + (record.amountDue ?? record.amount), 0)
+    : totalPaid;
 
   const paidPercent = totalFees > 0 ? Math.round((totalPaid / totalFees) * 100) : 100;
 
@@ -654,10 +668,10 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
     <div className="space-y-6 lg:space-y-8 text-right md:px-2 animate-in fade-in duration-550" id="mobile-payments-portal">
 
-      <div className="bg-gradient-to-br from-emerald-600 via-emerald-700 to-indigo-900 dark:from-slate-900 dark:via-emerald-950 dark:to-slate-955 text-white rounded-[28px] p-6 relative overflow-hidden shadow-lg border border-white/5 dark:border-white/5 space-y-4">
+      <div className="bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-955 text-white rounded-[28px] p-6 relative overflow-hidden shadow-lg border border-white/5 space-y-4">
 
-        <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/15 dark:bg-emerald-505/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-10 -left-10 w-44 h-44 bg-indigo-500/10 dark:bg-indigo-505/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-505/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-10 -left-10 w-44 h-44 bg-indigo-505/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex justify-between items-center pb-3 border-b border-white/10">
 
@@ -731,9 +745,9 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
 
 
-      <div className="bg-white/80 backdrop-blur-md dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-850/60 p-4.5 rounded-3xl space-y-3.5 shadow-[0_4px_18px_rgba(15,23,42,0.02)] relative overflow-hidden">
+      <div className="bg-slate-900/40 backdrop-blur-md border border-slate-850/60 p-4.5 rounded-3xl space-y-3.5 shadow-[0_4px_18px_rgba(15,23,42,0.02)] relative overflow-hidden">
         <div className="absolute -top-8 right-1/3 w-28 h-28 bg-gradient-to-br from-emerald-500/5 to-transparent rounded-full blur-2xl pointer-events-none" />
-        <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-indigo-500/5 dark:bg-indigo-505/5 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-indigo-505/5 rounded-full blur-2xl pointer-events-none" />
 
         <div className="relative">
 
@@ -751,11 +765,11 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
             onChange={(event) => setSearchTerm(event.target.value)}
 
-            className="w-full text-xs p-3 pr-10 text-right bg-neutral-50 dark:bg-slate-950 border border-neutral-200/50 dark:border-slate-850 rounded-2xl focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-slate-100 transition-all font-sans"
+            className="w-full text-xs p-3 pr-10 text-right bg-slate-950 border border-slate-850 rounded-2xl focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 transition-all font-sans"
 
           />
 
-          <Search className="w-4 h-4 text-neutral-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
 
         </div>
 
@@ -799,7 +813,7 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
                   ? 'bg-indigo-600 text-white font-extrabold shadow-sm shadow-indigo-500/20'
 
-                  : 'bg-neutral-50 dark:bg-slate-950 text-neutral-450 dark:text-zinc-300 hover:bg-neutral-200 dark:hover:bg-slate-850/60'
+                  : 'bg-slate-950 text-zinc-300 hover:bg-slate-850/60'
 
               }`}
 
@@ -821,7 +835,7 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
         <div className="flex justify-between items-center pr-1 select-none">
 
-          <h3 className="text-xs font-black text-gray-400 dark:text-slate-300 font-sans tracking-wide">قائمة الفواتير والالتزامات</h3>
+          <h3 className="text-xs font-black text-slate-300 font-sans tracking-wide">قائمة الفواتير والالتزامات</h3>
 
         </div>
 
@@ -833,15 +847,15 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
             Array.from({ length: 2 }).map((_, index) => (
 
-              <div key={index} className="p-4 bg-white/80 backdrop-blur-sm dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-850 rounded-2xl animate-pulse flex justify-between">
+              <div key={index} className="p-4 bg-slate-900/40 backdrop-blur-sm border border-slate-850 rounded-2xl animate-pulse flex justify-between">
 
-                <div className="w-14 h-5 bg-gray-200 dark:bg-slate-800 rounded-lg animate-pulse" />
+                <div className="w-14 h-5 bg-slate-800 rounded-lg animate-pulse" />
 
                 <div className="space-y-2 flex-1 text-right flex flex-col pr-4">
 
-                  <div className="w-1/3 h-4 bg-gray-200 dark:bg-slate-800 rounded-lg animate-pulse" />
+                  <div className="w-1/3 h-4 bg-slate-800 rounded-lg animate-pulse" />
 
-                  <div className="w-1/4 h-3 bg-gray-200 dark:bg-slate-800 rounded-lg animate-pulse" />
+                  <div className="w-1/4 h-3 bg-slate-800 rounded-lg animate-pulse" />
 
                 </div>
 
@@ -851,7 +865,7 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
           ) : finalInvoices.length === 0 ? (
 
-            <div className="p-8 text-center rounded-2.5xl bg-white/80 backdrop-blur-sm dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-850 select-none font-sans text-xs text-neutral-455">
+            <div className="p-8 text-center rounded-2.5xl bg-slate-900/40 backdrop-blur-sm border border-slate-850 select-none font-sans text-xs text-neutral-455">
 
               لا توجد بنود مالية مطابقة لخيارات العرض الحالية.
 
@@ -877,7 +891,7 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
                   whileTap={{ scale: 0.99 }}
 
-                  className="p-4 bg-white/80 backdrop-blur-sm dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-850/60 rounded-2xl relative overflow-hidden shadow-[0_2px_10px_rgba(15,23,42,0.012)] hover:border-indigo-400 dark:hover:border-indigo-505/30 transition-all flex flex-col gap-3 text-right"
+                  className="p-4 bg-slate-900/40 backdrop-blur-sm border border-slate-850/60 rounded-2xl relative overflow-hidden shadow-[0_2px_10px_rgba(15,23,42,0.012)] hover:border-indigo-505/30 transition-all flex flex-col gap-3 text-right"
 
                 >
 
@@ -889,7 +903,7 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
                     <div className="text-right flex-1">
 
-                      <h4 className="text-sm font-black text-slate-800 dark:text-zinc-100">{invoice.title}</h4>
+                      <h4 className="text-sm font-black text-zinc-100">{invoice.title}</h4>
 
                     </div>
 
@@ -905,19 +919,19 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
                   <div className="grid grid-cols-2 gap-3 text-[11px]">
 
-                    <div className="rounded-2xl border border-slate-200/50 dark:border-slate-850/60 bg-slate-50/70 dark:bg-slate-950/60 p-3">
+                    <div className="rounded-2xl border border-slate-850/60 bg-slate-950/60 p-3">
 
-                      <span className="block text-neutral-450 dark:text-slate-300 mb-1">المبلغ</span>
+                      <span className="block text-slate-300 mb-1">المبلغ</span>
 
-                      <strong className="font-mono text-slate-800 dark:text-zinc-100">{invoice.amount} ج.م</strong>
+                      <strong className="font-mono text-zinc-100">{invoice.amount} ج.م</strong>
 
                     </div>
 
-                    <div className="rounded-2xl border border-slate-200/50 dark:border-slate-850/60 bg-slate-50/70 dark:bg-slate-950/60 p-3">
+                    <div className="rounded-2xl border border-slate-850/60 bg-slate-950/60 p-3">
 
-                      <span className="block text-neutral-450 dark:text-slate-300 mb-1">تاريخ الاستحقاق</span>
+                      <span className="block text-slate-300 mb-1">تاريخ الاستحقاق</span>
 
-                      <strong className="font-mono text-slate-800 dark:text-zinc-100">{invoice.dueDate}</strong>
+                      <strong className="font-mono text-zinc-100">{invoice.dueDate}</strong>
 
                     </div>
 
@@ -957,7 +971,7 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
                     {invoice.status === 'waived' && (
 
-                      <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl text-[11px] font-black bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-500/20">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl text-[11px] font-black bg-violet-500/10 text-violet-300 border border-violet-500/20">
 
                         تم الإعفاء من هذا البند
 
@@ -979,7 +993,7 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
                         }}
 
-                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl text-[11px] font-black bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/15 transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl text-[11px] font-black bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/15 transition-colors"
 
                       >
 
@@ -1043,7 +1057,7 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
               transition={{ type: 'spring', damping: 28, stiffness: 260 }}
 
-              className="bg-white dark:bg-slate-900 rounded-[28px] border border-white/10 p-6 z-10 w-full max-w-lg space-y-4 max-h-[85vh] overflow-y-auto select-none font-sans text-right"
+              className="bg-slate-900 rounded-[28px] border border-slate-700/30 p-6 z-10 w-full max-w-lg space-y-4 max-h-[85vh] overflow-y-auto select-none font-sans text-right"
 
               dir="rtl"
 
@@ -1063,13 +1077,13 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
 
 
-              <div className="flex items-center justify-between border-b border-gray-100/60 dark:border-slate-850/50 pb-3">
+              <div className="flex items-center justify-between border-b border-slate-850/50 pb-3">
 
                 <div className="text-right">
 
-                  <h3 id="payment-instructions-title" className="text-sm font-black text-slate-800 dark:text-white">تعليمات السداد</h3>
+                  <h3 id="payment-instructions-title" className="text-sm font-black text-white">تعليمات السداد</h3>
 
-                  <span id="payment-instructions-description" className="text-[10px] text-neutral-500 dark:text-zinc-300 block mt-0.5">متابعة بند مالي خارج البوابة</span>
+                  <span id="payment-instructions-description" className="text-[10px] text-zinc-300 block mt-0.5">متابعة بند مالي خارج البوابة</span>
 
                 </div>
 
@@ -1079,7 +1093,7 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
                   onClick={closeInstructionsDialog}
 
-                  className="p-1.5 hover:bg-neutral-100 dark:hover:bg-slate-800 rounded-full text-neutral-450 cursor-pointer"
+                  className="p-1.5 hover:bg-slate-800 rounded-full text-slate-300 cursor-pointer"
 
                   aria-label="إغلاق تعليمات السداد"
 
@@ -1095,27 +1109,27 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 
-                <div className="p-3.5 rounded-2xl border border-slate-200/50 dark:border-slate-850 bg-slate-50/70 dark:bg-slate-950/60 space-y-1">
+                <div className="p-3.5 rounded-2xl border border-slate-850 bg-slate-950/60 space-y-1">
 
-                  <span className="text-[10px] text-neutral-500 dark:text-slate-450">البيان</span>
+                  <span className="text-[10px] text-slate-450">البيان</span>
 
-                  <p className="text-sm font-black text-slate-800 dark:text-zinc-100">{selectedInvoiceForInstructions.title}</p>
-
-                </div>
-
-                <div className="p-3.5 rounded-2xl border border-slate-200/50 dark:border-slate-850 bg-slate-50/70 dark:bg-slate-950/60 space-y-1">
-
-                  <span className="text-[10px] text-neutral-500 dark:text-slate-450">المبلغ</span>
-
-                  <p className="text-sm font-black text-slate-800 dark:text-zinc-100 font-mono">{selectedInvoiceForInstructions.amount} ج.م</p>
+                  <p className="text-sm font-black text-zinc-100">{selectedInvoiceForInstructions.title}</p>
 
                 </div>
 
-                <div className="p-3.5 rounded-2xl border border-slate-200/50 dark:border-slate-850 bg-slate-50/70 dark:bg-slate-950/60 space-y-1">
+                <div className="p-3.5 rounded-2xl border border-slate-850 bg-slate-950/60 space-y-1">
 
-                  <span className="text-[10px] text-neutral-500 dark:text-slate-450">تاريخ الاستحقاق</span>
+                  <span className="text-[10px] text-slate-450">المبلغ</span>
 
-                  <p className="text-sm font-black text-slate-800 dark:text-zinc-100 font-mono">{selectedInvoiceForInstructions.dueDate}</p>
+                  <p className="text-sm font-black text-zinc-100 font-mono">{selectedInvoiceForInstructions.amount} ج.م</p>
+
+                </div>
+
+                <div className="p-3.5 rounded-2xl border border-slate-850 bg-slate-950/60 space-y-1">
+
+                  <span className="text-[10px] text-slate-450">تاريخ الاستحقاق</span>
+
+                  <p className="text-sm font-black text-zinc-100 font-mono">{selectedInvoiceForInstructions.dueDate}</p>
 
                 </div>
 
@@ -1123,7 +1137,7 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
 
 
-              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/15 text-amber-800 dark:text-amber-200 space-y-2">
+              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/15 text-amber-200 space-y-2">
 
                 <div className="flex items-center gap-2">
 
@@ -1149,7 +1163,7 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
                   href={`tel:${supportPhone}`}
 
-                  className="flex items-center justify-between gap-3 p-3.5 rounded-2xl border border-indigo-500/15 bg-indigo-500/5 text-indigo-700 dark:text-indigo-300"
+                  className="flex items-center justify-between gap-3 p-3.5 rounded-2xl border border-indigo-500/15 bg-indigo-500/5 text-indigo-300"
 
                 >
 
@@ -1171,7 +1185,7 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
               {!isOnline && (
 
-                <div className="flex items-center gap-2 p-3 rounded-2xl border border-rose-500/15 bg-rose-500/10 text-rose-700 dark:text-rose-300 text-xs">
+                <div className="flex items-center gap-2 p-3 rounded-2xl border border-rose-500/15 bg-rose-500/10 text-rose-300 text-xs">
 
                   <WifiOff className="w-4 h-4 shrink-0" />
 
@@ -1227,7 +1241,7 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
               transition={{ type: 'spring', damping: 28, stiffness: 260 }}
 
-              className="bg-white dark:bg-slate-900 rounded-[28px] border border-white/10 p-6 z-10 w-full max-w-lg space-y-4 max-h-[85vh] overflow-y-auto select-none font-sans text-right"
+              className="bg-slate-900 rounded-[28px] border border-slate-700/30 p-6 z-10 w-full max-w-lg space-y-4 max-h-[85vh] overflow-y-auto select-none font-sans text-right"
 
               dir="rtl"
 
@@ -1247,13 +1261,13 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
 
 
-              <div className="flex items-center justify-between border-b border-gray-100/60 dark:border-slate-850/50 pb-3">
+              <div className="flex items-center justify-between border-b border-slate-850/50 pb-3">
 
                 <div className="text-right">
 
-                  <h3 id="payment-print-title" className="text-sm font-black text-slate-800 dark:text-white">مراجعة الإيصال</h3>
+                  <h3 id="payment-print-title" className="text-sm font-black text-white">مراجعة الإيصال</h3>
 
-                  <span id="payment-print-description" className="text-[10px] text-neutral-500 dark:text-zinc-300 block mt-0.5">تفاصيل السجل المالي المحفوظ</span>
+                  <span id="payment-print-description" className="text-[10px] text-zinc-300 block mt-0.5">تفاصيل السجل المالي المحفوظ</span>
 
                 </div>
 
@@ -1263,7 +1277,7 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
                   onClick={closePrintDialog}
 
-                  className="p-1.5 hover:bg-neutral-100 dark:hover:bg-slate-800 rounded-full text-neutral-450 cursor-pointer"
+                  className="p-1.5 hover:bg-slate-800 rounded-full text-slate-300 cursor-pointer"
 
                   aria-label="إغلاق نافذة الإيصال"
 
@@ -1277,19 +1291,19 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
 
 
-              <div className="rounded-[28px] border border-slate-200/60 dark:border-slate-850/60 bg-white dark:bg-slate-950 p-5 space-y-4 shadow-[0_6px_24px_rgba(15,23,42,0.05)]">
+              <div className="rounded-[28px] border border-slate-850/60 bg-slate-950 p-5 space-y-4 shadow-[0_6px_24px_rgba(15,23,42,0.05)]">
 
                 <div className="flex items-center justify-between">
 
                   <div className="text-right">
 
-                    <h4 className="text-lg font-black text-slate-900 dark:text-white">سند السداد</h4>
+                    <h4 className="text-lg font-black text-white">سند السداد</h4>
 
-                    <p className="text-[11px] text-neutral-500 dark:text-slate-450">إدارة سنتر {centerConfig.centerName}</p>
+                    <p className="text-[11px] text-slate-450">إدارة سنتر {centerConfig.centerName}</p>
 
                   </div>
 
-                  <div className="p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  <div className="p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
 
                     <Receipt className="w-5 h-5" />
 
@@ -1301,9 +1315,9 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
 
-                  <div className="rounded-2xl border border-slate-200/50 dark:border-slate-850 bg-slate-50/70 dark:bg-slate-900/50 p-3.5">
+                  <div className="rounded-2xl border border-slate-850 bg-slate-900/50 p-3.5">
 
-                    <span className="flex items-center gap-1.5 text-[10px] text-neutral-500 dark:text-slate-450 mb-1">
+                    <span className="flex items-center gap-1.5 text-[10px] text-slate-450 mb-1">
 
                       <Calendar className="w-3.5 h-3.5" />
 
@@ -1311,27 +1325,27 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
                     </span>
 
-                    <span className="font-bold font-mono text-slate-800 dark:text-zinc-100">{selectedInvoiceForPrint.paidDate || 'غير مسدد'}</span>
+                    <span className="font-bold font-mono text-zinc-100">{selectedInvoiceForPrint.paidDate || 'غير مسدد'}</span>
 
                   </div>
 
 
 
-                  <div className="rounded-2xl border border-slate-200/50 dark:border-slate-850 bg-slate-50/70 dark:bg-slate-900/50 p-3.5">
+                  <div className="rounded-2xl border border-slate-850 bg-slate-900/50 p-3.5">
 
-                    <span className="block text-[10px] text-neutral-500 dark:text-slate-450 mb-1">الحالة</span>
+                    <span className="block text-[10px] text-slate-450 mb-1">الحالة</span>
 
-                    <span className="font-black text-slate-800 dark:text-zinc-200">{selectedInvoiceForPrint.title}</span>
+                    <span className="font-black text-zinc-200">{selectedInvoiceForPrint.title}</span>
 
                   </div>
 
 
 
-                  <div className="rounded-2xl border border-slate-200/50 dark:border-slate-850 bg-slate-50/70 dark:bg-slate-900/50 p-3.5">
+                  <div className="rounded-2xl border border-slate-850 bg-slate-900/50 p-3.5">
 
-                    <span className="block text-[10px] text-neutral-500 dark:text-slate-450 mb-1">الجهة المستلمة</span>
+                    <span className="block text-[10px] text-slate-450 mb-1">الجهة المستلمة</span>
 
-                    <span className="font-black text-slate-800 dark:text-zinc-200">إدارة سنتر {centerConfig.centerName}</span>
+                    <span className="font-black text-zinc-200">إدارة سنتر {centerConfig.centerName}</span>
 
                   </div>
 
@@ -1341,9 +1355,9 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
                 <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-center">
 
-                  <span className="block text-[11px] text-emerald-700 dark:text-emerald-250">الطالب المسجل</span>
+                  <span className="block text-[11px] text-emerald-250">الطالب المسجل</span>
 
-                  <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 font-mono">{selectedInvoiceForPrint.amount} ج.م</span>
+                  <span className="text-sm font-black text-emerald-400 font-mono">{selectedInvoiceForPrint.amount} ج.م</span>
 
                 </div>
 
@@ -1375,7 +1389,7 @@ export default function Payments({ records, centerConfig, isOnline = true }: Pay
 
                   onClick={closePrintDialog}
 
-                  className="px-4 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-sm font-black"
+                  className="px-4 py-3 rounded-2xl bg-slate-800 text-slate-200 text-sm font-black"
 
                 >
 

@@ -299,8 +299,8 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
     <main className="min-h-screen bg-bg-app text-text-primary flex flex-col items-center justify-center p-4 md:p-8 relative overflow-hidden font-sans select-none" dir="rtl" aria-labelledby="portal-login-title">
       
       {/* Absolute Decorative Ambient Background Blurs */}
-      <div aria-hidden="true" className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-indigo-900/10 dark:bg-indigo-900/10 blur-[130px]" />
-      <div aria-hidden="true" className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-violet-900/10 dark:bg-violet-900/10 blur-[130px]" />
+      <div aria-hidden="true" className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-indigo-900/10 blur-[130px]" />
+      <div aria-hidden="true" className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-violet-900/10 blur-[130px]" />
 
       <div className="w-full max-w-6xl grid md:grid-cols-12 gap-6 lg:gap-10 items-center z-10">
         
@@ -318,7 +318,7 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
             />
             <div>
               <h1 id="portal-login-title" className="text-2xl font-black tracking-tight text-text-primary">بوابة {centerConfig.centerName}</h1>
-              <p className="text-sm text-indigo-650 dark:text-indigo-400 font-bold">{centerConfig.teacherName} - أستاذ {centerConfig.subjectName}</p>
+              <p className="text-sm text-indigo-400 font-bold">{centerConfig.teacherName} - أستاذ {centerConfig.subjectName}</p>
             </div>
           </div>
 
@@ -329,9 +329,9 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
             <p className="text-xs text-text-muted leading-relaxed">
               بوابة تعليمية ذكية تمنح الطلاب وأولياء الأمور وصولاً سريعًا إلى الحضور والغياب، والاشتراكات، والاختبارات الإلكترونية، والنتائج، والتقييمات، والإشعارات، عبر واجهة حديثة وآمنة توفر تجربة متابعة متكاملة في أي وقت.
             </p>
-            <div className="p-3 bg-indigo-500/5 dark:bg-slate-900/45 border border-indigo-500/10 dark:border-slate-800 rounded-2xl flex items-center justify-between text-right mt-2">
-              <span className="text-[10px] text-indigo-650 dark:text-indigo-400 font-bold">الدعم الأكاديمي المباشر</span>
-              <a href={`tel:${centerConfig.phoneNumber}`} className="text-xs font-black text-indigo-650 dark:text-indigo-400 font-mono flex items-center gap-1">
+            <div className="p-3 bg-slate-900/45 border border-slate-800 rounded-2xl flex items-center justify-between text-right mt-2">
+              <span className="text-[10px] text-indigo-400 font-bold">الدعم الأكاديمي المباشر</span>
+              <a href={`tel:${centerConfig.phoneNumber}`} className="text-xs font-black text-indigo-400 font-mono flex items-center gap-1">
                 <span>{centerConfig.phoneNumber}</span>
                 <Phone className="w-3.5 h-3.5" />
               </a>
@@ -341,10 +341,10 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
 
         {/* Right Form Card */}
         <div className="md:col-span-7">
-          <div className="p-6 md:p-8 rounded-3xl bg-bg-card backdrop-blur-xl border border-border-card shadow-lg dark:shadow-2xl space-y-6">
+          <div className="p-6 md:p-8 rounded-3xl bg-bg-card backdrop-blur-xl border border-border-card shadow-lg space-y-6">
             
             {/* Tab switch header */}
-            <div className="flex p-1 bg-neutral-100 dark:bg-slate-950/45 rounded-2xl border border-neutral-200/60 dark:border-slate-900/55" role="tablist" aria-label="اختيار شاشة الدخول أو طلب الانضمام">
+            <div className="flex p-1 bg-slate-950/45 rounded-2xl border border-slate-900/55" role="tablist" aria-label="اختيار شاشة الدخول أو طلب الانضمام">
               <button
                 type="button"
                 id="auth-tab-login"
@@ -381,7 +381,7 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
             {!isOnline && (
               <div
                 id="auth-offline-status"
-                className="flex items-center gap-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs text-right leading-relaxed animate-in fade-in duration-150"
+                className="flex items-center gap-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs text-right leading-relaxed animate-in fade-in duration-150"
                 role="status"
                 aria-live="polite"
               >
@@ -393,7 +393,7 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
             {loginError && view === 'login' && (
               <div
                 id="login-error-message"
-                className="flex items-center gap-2.5 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs text-right leading-relaxed animate-in fade-in duration-150"
+                className="flex items-center gap-2.5 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs text-right leading-relaxed animate-in fade-in duration-150"
                 role="alert"
                 aria-live="assertive"
               >
@@ -405,7 +405,7 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
             {joinErrorMsg && view === 'join' && (
               <div
                 id="join-error-message"
-                className="flex items-center gap-2.5 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs text-right leading-relaxed animate-in fade-in"
+                className="flex items-center gap-2.5 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs text-right leading-relaxed animate-in fade-in"
                 role="alert"
                 aria-live="assertive"
               >
@@ -417,7 +417,7 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
             {joinSuccessMsg && view === 'join' && (
               <div
                 id="join-success-message"
-                className="flex flex-col items-center text-center gap-2.5 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-650 dark:text-emerald-400 text-xs animate-in zoom-in duration-200"
+                className="flex flex-col items-center text-center gap-2.5 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs animate-in zoom-in duration-200"
                 role="status"
                 aria-live="polite"
               >
@@ -458,7 +458,7 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
                         autoComplete="username"
                         inputMode="numeric"
                         placeholder="مثال: 2026110904"
-                        className="w-full h-11 pr-11 pl-4 rounded-xl bg-neutral-50 dark:bg-slate-950/60 text-text-primary border border-neutral-200 dark:border-slate-800/80 focus:border-indigo-505 focus:ring-1 focus:ring-indigo-505 transition-all font-mono text-sm placeholder:text-text-muted tracking-wide text-right"
+                        className="w-full h-11 pr-11 pl-4 rounded-xl bg-slate-950/60 text-text-primary border border-slate-800/80 focus:border-indigo-505 focus:ring-1 focus:ring-indigo-505 transition-all font-mono text-sm placeholder:text-text-muted tracking-wide text-right"
                         aria-invalid={Boolean(loginError)}
                         aria-describedby={loginError ? 'login-error-message' : undefined}
                       />
@@ -479,7 +479,7 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
                         autoComplete="tel"
                         inputMode="tel"
                         placeholder="مثال: 01011223344"
-                        className="w-full h-11 pr-11 pl-4 rounded-xl bg-neutral-50 dark:bg-slate-950/60 text-text-primary border border-neutral-200 dark:border-slate-800/80 focus:border-indigo-505 focus:ring-1 focus:ring-indigo-505 transition-all font-mono text-sm placeholder:text-text-muted text-right"
+                        className="w-full h-11 pr-11 pl-4 rounded-xl bg-slate-950/60 text-text-primary border border-slate-800/80 focus:border-indigo-505 focus:ring-1 focus:ring-indigo-505 transition-all font-mono text-sm placeholder:text-text-muted text-right"
                         aria-invalid={Boolean(loginError)}
                         aria-describedby={loginError ? 'login-error-message' : undefined}
                       />
@@ -542,7 +542,7 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
                         onChange={(e) => setStudentName(e.target.value)}
                         autoComplete="name"
                         placeholder="مثال: يوسف حسام السيد"
-                        className="w-full h-10 pr-10 pl-3 rounded-xl bg-neutral-50 dark:bg-slate-950/60 text-text-primary border border-neutral-200 dark:border-slate-800 focus:border-indigo-505 transition-all text-xs"
+                        className="w-full h-10 pr-10 pl-3 rounded-xl bg-slate-950/60 text-text-primary border border-slate-800 focus:border-indigo-505 transition-all text-xs"
                         aria-invalid={Boolean(joinErrorMsg)}
                         aria-describedby={joinErrorMsg ? 'join-error-message' : joinSuccessMsg ? 'join-success-message' : undefined}
                       />
@@ -565,7 +565,7 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
                         onChange={(e) => setJoinStudentCode(e.target.value)}
                         autoComplete="off"
                         placeholder="مثال: 2026110904"
-                        className="w-full h-10 pr-10 pl-3 rounded-xl bg-neutral-50 dark:bg-slate-950/60 text-text-primary border border-neutral-200 dark:border-slate-800 focus:border-indigo-505 transition-all text-xs font-mono text-right"
+className="w-full h-10 pr-10 pl-3 rounded-xl bg-slate-950/60 text-text-primary border border-slate-800 focus:border-indigo-505 transition-all text-xs font-mono text-right"
                         aria-invalid={Boolean(joinErrorMsg)}
                         aria-describedby={joinErrorMsg ? 'join-error-message' : joinSuccessMsg ? 'join-success-message' : undefined}
                       />
@@ -587,7 +587,7 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
                         autoComplete="tel"
                         inputMode="tel"
                         placeholder="مثال: 01114521458"
-                        className="w-full h-10 pr-10 pl-3 rounded-xl bg-neutral-50 dark:bg-slate-950/60 text-text-primary border border-neutral-200 dark:border-slate-800 focus:border-indigo-505 transition-all text-xs font-mono"
+                        className="w-full h-10 pr-10 pl-3 rounded-xl bg-slate-950/60 text-text-primary border border-slate-800 focus:border-indigo-505 transition-all text-xs font-mono"
                         aria-invalid={Boolean(joinErrorMsg)}
                         aria-describedby={joinErrorMsg ? 'join-error-message' : joinSuccessMsg ? 'join-success-message' : undefined}
                       />
@@ -609,7 +609,7 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
                         autoComplete="tel"
                         inputMode="tel"
                         placeholder="مثال: 01548775412"
-                        className="w-full h-10 pr-10 pl-3 rounded-xl bg-neutral-50 dark:bg-slate-950/60 text-text-primary border border-neutral-200 dark:border-slate-800/80 focus:border-indigo-505 transition-all text-xs font-mono"
+                        className="w-full h-10 pr-10 pl-3 rounded-xl bg-slate-950/60 text-text-primary border border-slate-800/80 focus:border-indigo-505 transition-all text-xs font-mono"
                       />
                       <Phone className="w-3.5 h-3.5 text-slate-550 absolute top-3.5 right-3.5" />
                     </div>
@@ -624,10 +624,10 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
                         required={requireJoinField('academic_stage')}
                         value={academicStage}
                         onChange={(e) => handleStageChange(e.target.value)}
-                        className="w-full h-10 pr-10 pl-3 rounded-xl bg-neutral-50 dark:bg-slate-950/60 text-text-primary border border-neutral-200 dark:border-slate-800/80 focus:border-indigo-505 transition-all text-xs appearance-none cursor-pointer"
+                        className="w-full h-10 pr-10 pl-3 rounded-xl bg-slate-950/60 text-text-primary border border-slate-800/80 focus:border-indigo-505 transition-all text-xs appearance-none cursor-pointer"
                       >
                         {visibleStages.map((stage) => (
-                          <option key={stage} value={stage} className="bg-white dark:bg-slate-900">{stage}</option>
+                          <option key={stage} value={stage} className="bg-slate-900">{stage}</option>
                         ))}
                       </select>
                       <Layers className="w-3.5 h-3.5 text-slate-550 absolute top-3.5 right-3.5 pointer-events-none" />
@@ -636,17 +636,17 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
 
                   {/* Grade */}
                   <div hidden={!showJoinField('grade')} className="space-y-1 text-right">
-                    <label htmlFor="join-grade" className="text-[11px] font-bold text-neutral-500 dark:text-slate-405">الصف الدراسي</label>
+                    <label htmlFor="join-grade" className="text-[11px] font-bold text-slate-405">الصف الدراسي</label>
                     <div className="relative">
                       <select
                         id="join-grade"
                         required={requireJoinField('grade')}
                         value={grade}
                         onChange={(e) => setGrade(e.target.value)}
-                        className="w-full h-10 pr-10 pl-3 rounded-xl bg-neutral-50 dark:bg-slate-950/60 text-slate-800 dark:text-slate-100 border border-neutral-200 dark:border-slate-800 focus:border-indigo-505 transition-all text-xs appearance-none cursor-pointer"
+                        className="w-full h-10 pr-10 pl-3 rounded-xl bg-slate-950/60 text-slate-100 border border-slate-800 focus:border-indigo-505 transition-all text-xs appearance-none cursor-pointer"
                       >
                         {availableGrades.map((gradeOption) => (
-                          <option key={gradeOption} value={gradeOption} className="bg-white dark:bg-slate-900">{gradeOption}</option>
+                          <option key={gradeOption} value={gradeOption} className="bg-slate-900">{gradeOption}</option>
                         ))}
                       </select>
                       <BookOpen className="w-3.5 h-3.5 text-slate-550 absolute top-3.5 right-3.5 pointer-events-none" />
@@ -655,10 +655,10 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
 
                   {/* Academic Group */}
                   <div hidden={!showJoinField('academic_group')} className="space-y-1 text-right">
-                    <label htmlFor="join-academic-group" className="text-[11px] font-bold text-neutral-500 dark:text-slate-405">المجموعة التعليمية</label>
+                    <label htmlFor="join-academic-group" className="text-[11px] font-bold text-slate-405">المجموعة التعليمية</label>
 
                     {groupsFetchError && (
-                      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-[10px] mb-1">
+                      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[10px] mb-1">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                         <span className="flex-1">تعذر تحميل قائمة المجموعات. يرجى التحقق من الاتصال.</span>
                       </div>
@@ -671,9 +671,9 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
                         value={academicGroup}
                         onChange={(e) => setAcademicGroup(e.target.value)}
                         disabled={groupsLoading}
-                        className="w-full h-10 pr-10 pl-3 rounded-xl bg-neutral-50 dark:bg-slate-950/60 text-slate-800 dark:text-slate-100 border border-neutral-200 dark:border-slate-800 focus:border-indigo-505 transition-all text-xs appearance-none cursor-pointer disabled:opacity-60"
+                        className="w-full h-10 pr-10 pl-3 rounded-xl bg-slate-950/60 text-slate-100 border border-slate-800 focus:border-indigo-505 transition-all text-xs appearance-none cursor-pointer disabled:opacity-60"
                       >
-                        <option value="" className="bg-white dark:bg-slate-900">
+                        <option value="" className="bg-slate-900">
                           {groupsLoading
                             ? 'جارٍ تحميل المجموعات...'
                             : groupsFetchError
@@ -683,7 +683,7 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
                                 : 'اختر المجموعة المناسبة'}
                         </option>
                         {filteredGroups.map((group) => (
-                          <option key={group.id} value={group.name} className="bg-white dark:bg-slate-900">{group.name}</option>
+                          <option key={group.id} value={group.name} className="bg-slate-900">{group.name}</option>
                         ))}
                       </select>
                       <Users className="w-3.5 h-3.5 text-slate-550 absolute top-3.5 right-3.5 pointer-events-none" />
@@ -692,17 +692,17 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
 
                   {/* Gender selection */}
                   <div hidden={!showJoinField('gender')} className="space-y-1 text-right">
-                    <label htmlFor="join-gender" className="text-[11px] font-bold text-neutral-500 dark:text-slate-450">الجنس</label>
+                    <label htmlFor="join-gender" className="text-[11px] font-bold text-slate-450">الجنس</label>
                     <div className="relative">
                       <select
                         id="join-gender"
                         required={requireJoinField('gender')}
                         value={gender}
                         onChange={(e) => setGender(e.target.value)}
-                        className="w-full h-10 pr-10 pl-3 rounded-xl bg-neutral-50 dark:bg-slate-950/60 text-slate-800 dark:text-slate-100 border border-neutral-200 dark:border-slate-800 focus:border-indigo-505 transition-all text-xs appearance-none cursor-pointer"
+                        className="w-full h-10 pr-10 pl-3 rounded-xl bg-slate-950/60 text-slate-100 border border-slate-800 focus:border-indigo-505 transition-all text-xs appearance-none cursor-pointer"
                       >
-                        <option value="ذكر" className="bg-white dark:bg-slate-900">ذكر (طالب)</option>
-                        <option value="أنثى" className="bg-white dark:bg-slate-900">أنثى (طالبة)</option>
+                        <option value="ذكر" className="bg-slate-900">ذكر (طالب)</option>
+                        <option value="أنثى" className="bg-slate-900">أنثى (طالبة)</option>
                       </select>
                       <User className="w-3.5 h-3.5 text-slate-550 absolute top-3.5 right-3.5 pointer-events-none" />
                     </div>

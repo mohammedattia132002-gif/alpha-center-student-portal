@@ -127,7 +127,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               {/* Close Button */}
               <button
                 onClick={() => dismissToast(toast.id)}
-                className="text-text-muted hover:text-text-primary p-1 hover:bg-gray-100/50 dark:hover:bg-slate-800/50 transition-colors rounded-lg cursor-pointer shrink-0"
+                className="text-text-muted hover:text-text-primary p-1 hover:bg-slate-800/50 transition-colors rounded-lg cursor-pointer shrink-0"
                 aria-label={`إغلاق التنبيه: ${toast.title}`}
               >
                 <X className="w-4 h-4" />

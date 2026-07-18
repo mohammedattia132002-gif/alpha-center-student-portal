@@ -340,9 +340,9 @@ export default function ExamTaker({ exams, currentStudent, onAddGrade }: ExamTak
         /* VIEW A: CHOOSE TEST HUB */
         <div className="space-y-5">
           
-          <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-900 dark:from-slate-900 dark:via-indigo-950 dark:to-slate-955 text-white rounded-[28px] p-4.5 relative overflow-hidden shadow-lg border border-white/5 dark:border-white/5 space-y-4">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/15 dark:bg-indigo-505/15 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-10 -left-10 w-44 h-44 bg-emerald-500/10 dark:bg-emerald-505/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-955 text-white rounded-[28px] p-4.5 relative overflow-hidden shadow-lg border border-white/5 space-y-4">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-505/15 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-10 -left-10 w-44 h-44 bg-emerald-505/10 rounded-full blur-3xl pointer-events-none" />
             <div className="flex justify-between items-center pb-2 border-b border-white/10 select-none">
               <span className="text-[9px] font-mono text-indigo-200 bg-white/10 px-2 py-0.5 rounded-full">امتحانات اليوم</span>
               <h3 className="text-xs font-black text-white">المركز التقييمي والامتحانات</h3>
@@ -360,11 +360,11 @@ export default function ExamTaker({ exams, currentStudent, onAddGrade }: ExamTak
             {exams.map((exam) => (
               <div 
                 key={exam.id}
-                className="p-4 bg-white/80 backdrop-blur-sm dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-850/60 rounded-3xl relative overflow-hidden flex flex-col gap-3.5 shadow-[0_2px_10px_rgba(15,23,42,0.012)] hover:shadow-[0_6px_20px_rgba(15,23,42,0.025)] hover:border-indigo-400 dark:hover:border-indigo-505/30 transition-all duration-300"
+                className="p-4 bg-slate-900/40 border border-slate-850/60 rounded-3xl relative overflow-hidden flex flex-col gap-3.5 shadow-[0_2px_10px_rgba(15,23,42,0.012)] hover:shadow-[0_6px_20px_rgba(15,23,42,0.025)] hover:border-indigo-505/30 transition-all duration-300"
               >
                 <div className="flex justify-between items-start">
                   <div className="text-right">
-                    <h4 className="text-xs font-black text-gray-900 dark:text-white">{exam.title}</h4>
+                    <h4 className="text-xs font-black text-white">{exam.title}</h4>
                     <span className="text-[9px] text-zinc-400 block mt-0.5 font-sans font-mono">{exam.subject} • كود {getExamCode(exam)}</span>
                   </div>
 
@@ -377,7 +377,7 @@ export default function ExamTaker({ exams, currentStudent, onAddGrade }: ExamTak
                   </span>
                 </div>
 
-                <div className="flex justify-between items-center text-xs font-mono text-zinc-400 pt-2 border-t border-dashed border-neutral-200/50 dark:border-slate-850">
+                <div className="flex justify-between items-center text-xs font-mono text-zinc-400 pt-2 border-t border-dashed border-slate-850">
                   <span>الأسئلة: {exam.questions.length} • {exam.totalPoints} نقطة</span>
                   
                   {exam.status === 'available' ? (
@@ -413,11 +413,11 @@ export default function ExamTaker({ exams, currentStudent, onAddGrade }: ExamTak
               </div>
 
               <div className="grid grid-cols-2 gap-3 pt-1 text-center font-mono">
-                <div className="p-2.5 bg-neutral-50 dark:bg-slate-950 rounded-2xl border border-neutral-100/10">
+                <div className="p-2.5 bg-slate-950 rounded-2xl border border-neutral-100/10">
                   <span className="text-[8px] text-zinc-400 block font-sans">مجموع النقاط المحصلة</span>
-                  <span className="text-base font-black text-gray-900 dark:text-zinc-150">{completedAttempt.score} / {completedAttempt.maxScore}</span>
+                  <span className="text-base font-black text-zinc-150">{completedAttempt.score} / {completedAttempt.maxScore}</span>
                 </div>
-                <div className="p-2.5 bg-neutral-50 dark:bg-slate-950 rounded-2xl border border-neutral-100/10">
+                <div className="p-2.5 bg-slate-950 rounded-2xl border border-neutral-100/10">
                   <span className="text-[8px] text-zinc-400 block font-sans">النسبة المئوية المحصلة</span>
                   <span className="text-base font-black text-indigo-505">{completedAttempt.percentage.toFixed(0)}%</span>
                 </div>
@@ -468,7 +468,7 @@ export default function ExamTaker({ exams, currentStudent, onAddGrade }: ExamTak
               <span>معدل الحفظ والتقدم: المجموع {Object.keys(activeSession.answers).length} حلول</span>
             </div>
 
-            <div className="w-full h-2 bg-neutral-100 dark:bg-slate-900 rounded-full overflow-hidden border border-neutral-200/10">
+            <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-neutral-200/10">
               <div 
                 className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-300 rounded-full" 
                 style={{ width: `${((activeSession.currentQuestionIndex + 1) / activeSession.exam.questions.length) * 100}%` }} 
@@ -477,23 +477,23 @@ export default function ExamTaker({ exams, currentStudent, onAddGrade }: ExamTak
           </div>
 
           {/* C. SLIDING QUESTION PANE CONTAINER (Framer Motion sliding transitions!) */}
-          <div className="bg-white dark:bg-slate-900 border border-neutral-150/60 dark:border-slate-850 p-5 rounded-3xl space-y-4 shadow-xs">
+          <div className="bg-slate-900 border border-slate-850 p-5 rounded-3xl space-y-4 shadow-xs">
             
             {/* Question description */}
             <div className="space-y-1.5">
-              <span className="text-[9px] text-indigo-550 dark:text-indigo-400 font-extrabold uppercase font-sans tracking-wide block">QUESTION BODY</span>
+              <span className="text-[9px] text-indigo-400 font-extrabold uppercase font-sans tracking-wide block">QUESTION BODY</span>
               {currentQuestion?.imageUrl && (
-                <div className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-neutral-50 dark:border-slate-800 dark:bg-slate-950">
+                <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950">
                   <img
                     src={currentQuestion.imageUrl}
                     alt={`صورة السؤال ${currentQuestion.pageNumber || activeSession.currentQuestionIndex + 1}`}
-                    className="block w-full max-h-[62vh] object-contain bg-white dark:bg-slate-950"
+                    className="block w-full max-h-[62vh] object-contain bg-slate-950"
                     draggable={false}
                   />
                 </div>
               )}
               {currentQuestion?.text && (!currentQuestion.imageUrl || !isGeneratedPdfQuestionText(currentQuestion.text)) && (
-                <h2 className="text-xs font-bold leading-relaxed text-gray-900 dark:text-zinc-100">
+                <h2 className="text-xs font-bold leading-relaxed text-zinc-100">
                   {currentQuestion.text}
                 </h2>
               )}
@@ -502,7 +502,7 @@ export default function ExamTaker({ exams, currentStudent, onAddGrade }: ExamTak
             {/* Matrix of Large Touch choices targets (easy thumb touches!) */}
             {currentQuestion && isNumericQuestion(currentQuestion) && (
               <label className="block space-y-2.5 pt-2">
-                <span className="block text-[10px] font-black text-neutral-500 dark:text-zinc-300">
+                <span className="block text-[10px] font-black text-zinc-300">
                   أدخل إجابتك الرقمية
                 </span>
                 <input
@@ -510,7 +510,7 @@ export default function ExamTaker({ exams, currentStudent, onAddGrade }: ExamTak
                   inputMode="decimal"
                   value={currentAnswer}
                   onChange={(event) => handleAnswerChange(currentQuestion.id, event.target.value)}
-                  className="w-full rounded-2xl border border-neutral-200/70 bg-neutral-50 px-4 py-4 text-right text-sm font-black text-neutral-800 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-800 dark:bg-slate-950 dark:text-zinc-100"
+                  className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-4 text-right text-sm font-black text-zinc-100 outline-none transition-all focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                   placeholder="12.5"
                   autoComplete="off"
                 />
@@ -532,11 +532,11 @@ export default function ExamTaker({ exams, currentStudent, onAddGrade }: ExamTak
                     className={`w-full p-4 rounded-2xl text-right flex items-center justify-between gap-3 cursor-pointer transition-all ${
                       isSelected 
                         ? 'bg-indigo-600 text-white font-extrabold scale-[1.01] shadow-md border-indigo-700' 
-                        : 'bg-neutral-50 dark:bg-slate-950 hover:bg-neutral-100 dark:hover:bg-slate-850 text-neutral-650 dark:text-zinc-300 border border-neutral-200/50 dark:border-slate-850'
+                        : 'bg-slate-950 hover:bg-slate-850 text-zinc-300 border border-slate-850'
                     }`}
                   >
                     <span className={`min-w-7 h-7 px-1 rounded-full border flex items-center justify-center text-[10px] font-black shrink-0 overflow-hidden whitespace-nowrap ${
-                      isSelected ? 'bg-white text-indigo-650 border-white' : 'border-neutral-300 dark:border-slate-800'
+                      isSelected ? 'bg-white text-indigo-650 border-white' : 'border-slate-800'
                     }`}>
                       {badgeText}
                     </span>
@@ -556,7 +556,7 @@ export default function ExamTaker({ exams, currentStudent, onAddGrade }: ExamTak
             {activeSession.currentQuestionIndex > 0 ? (
               <button
                 onClick={() => navigateQuestion(activeSession.currentQuestionIndex - 1)}
-                className="px-4 py-3 bg-neutral-100 hover:bg-neutral-200 dark:bg-slate-850 text-neutral-700 dark:text-neutral-300 font-bold rounded-2xl text-xs flex items-center gap-1 cursor-pointer"
+                className="px-4 py-3 bg-slate-850 text-neutral-300 font-bold rounded-2xl text-xs flex items-center gap-1 cursor-pointer"
               >
                 <ChevronRight className="w-4 h-4" />
                 <span>السابق</span>
@@ -604,22 +604,22 @@ export default function ExamTaker({ exams, currentStudent, onAddGrade }: ExamTak
               animate={{ opacity: 1, scale: 1, y: 0 }} 
               exit={{ opacity: 0, scale: 0.95, y: 16 }} 
               transition={{ type: 'spring', damping: 28, stiffness: 260 }}
-              className="bg-white dark:bg-slate-900 rounded-[28px] border border-white/10 p-5 z-10 w-full max-w-lg space-y-4 max-h-[85vh] overflow-y-auto font-sans text-right select-none"
+              className="bg-slate-900 rounded-[28px] border border-white/10 p-5 z-10 w-full max-w-lg space-y-4 max-h-[85vh] overflow-y-auto font-sans text-right select-none"
               role="dialog"
               aria-modal="true"
               aria-labelledby="exam-instructions-title"
               aria-describedby="exam-instructions-description"
               tabIndex={-1}
             >
-              <div className="flex items-center justify-between border-b border-gray-50 dark:border-slate-850/60 pb-3">
+              <div className="flex items-center justify-between border-b border-slate-850/60 pb-3">
                 <div className="text-right">
-                  <h3 id="exam-instructions-title" className="text-sm font-black text-gray-900 dark:text-white">تفاصيل وإرشادات الامتحان</h3>
+                  <h3 id="exam-instructions-title" className="text-sm font-black text-white">تفاصيل وإرشادات الامتحان</h3>
                   <p id="exam-instructions-description" className="text-[9px] text-neutral-450 block mt-0.5">اقرأ الشروط للموافقة والمتابعة للأرشفة</p>
                 </div>
                 <button 
                   type="button"
                   onClick={closeExamInstructions}
-                  className="p-1.5 hover:bg-neutral-100 dark:hover:bg-slate-850 rounded-full text-neutral-450"
+                  className="p-1.5 hover:bg-slate-850 rounded-full text-neutral-450"
                   aria-label="إغلاق تعليمات الامتحان"
                 >
                   <X className="w-4.5 h-4.5" />
@@ -629,15 +629,15 @@ export default function ExamTaker({ exams, currentStudent, onAddGrade }: ExamTak
               <div className="space-y-3.5 text-xs text-neutral-650 pr-1 leading-relaxed">
                 <div className="flex justify-between text-right">
                   <span className="text-neutral-450">موضوع الامتحان:</span>
-                  <span className="font-bold text-gray-800 dark:text-zinc-200">{selectedExamForInstructions.title}</span>
+                  <span className="font-bold text-zinc-200">{selectedExamForInstructions.title}</span>
                 </div>
                 <div className="flex justify-between text-right">
                   <span className="text-neutral-450">المدة الزمنية:</span>
-                  <span className="font-bold text-gray-800 dark:text-zinc-200 font-mono">{selectedExamForInstructions.durationMinutes} دقيقة</span>
+                  <span className="font-bold text-zinc-200 font-mono">{selectedExamForInstructions.durationMinutes} دقيقة</span>
                 </div>
                 <div className="flex justify-between text-right">
                   <span className="text-neutral-450">مجموع الأسئلة:</span>
-                  <span className="font-bold text-gray-800 dark:text-zinc-200 font-mono">{selectedExamForInstructions.questions.length} أسئلة اختبارية</span>
+                  <span className="font-bold text-zinc-200 font-mono">{selectedExamForInstructions.questions.length} أسئلة اختبارية</span>
                 </div>
 
                 <div className="p-3 bg-amber-500/5 text-amber-600 rounded-2xl border border-amber-500/20 text-[10px] flex items-start gap-2">
@@ -651,9 +651,9 @@ export default function ExamTaker({ exams, currentStudent, onAddGrade }: ExamTak
                 <button
                   type="button"
                   onClick={() => { setHasAgreedToTerms(!hasAgreedToTerms); playPortalChime('click'); }}
-                  className="w-full p-2.5 rounded-xl hover:bg-neutral-50 dark:hover:bg-slate-850 transition-all flex items-center justify-between gap-2 border border-neutral-200/50"
+                  className="w-full p-2.5 rounded-xl hover:bg-slate-850 transition-all flex items-center justify-between gap-2 border border-neutral-200/50"
                 >
-                  <span className="text-[10px] font-bold text-gray-800 dark:text-zinc-300">أوافق على كافة الشروط الأكاديمية وأبدأ المحاولة مستعداً.</span>
+                  <span className="text-[10px] font-bold text-zinc-300">أوافق على كافة الشروط الأكاديمية وأبدأ المحاولة مستعداً.</span>
                   <span className={`w-5 h-5 rounded-md border flex items-center justify-center text-xs shrink-0 cursor-pointer ${
                     hasAgreedToTerms ? 'bg-indigo-650 text-white border-indigo-600' : 'border-neutral-300'
                   }`}>
@@ -679,7 +679,7 @@ export default function ExamTaker({ exams, currentStudent, onAddGrade }: ExamTak
                 <button 
                   type="button"
                   onClick={closeExamInstructions}
-                  className="px-4 py-3 bg-neutral-100 hover:bg-neutral-200 dark:bg-slate-850 text-neutral-700 dark:text-neutral-300 font-bold rounded-2xl text-xs"
+                  className="px-4 py-3 bg-slate-850 text-neutral-300 font-bold rounded-2xl text-xs"
                 >
                   إلغاء البند
                 </button>

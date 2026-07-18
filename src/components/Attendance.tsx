@@ -70,28 +70,28 @@ export default function Attendance({ records }: AttendanceProps) {
         return {
           text: 'حاضر',
           color: 'text-emerald-505 bg-emerald-500/10 border-emerald-500/15',
-          badge: 'border-emerald-500/15 text-emerald-600 dark:text-emerald-400 bg-emerald-500/5',
+          badge: 'border-emerald-500/15 text-emerald-400 bg-emerald-500/5',
           bulletColor: 'bg-emerald-500 shadow-emerald-500/30',
         };
       case 'late':
         return {
           text: 'متأخر',
           color: 'text-amber-505 bg-amber-500/10 border-amber-500/15',
-          badge: 'border-amber-500/15 text-amber-600 dark:text-amber-400 bg-amber-500/5',
+          badge: 'border-amber-500/15 text-amber-400 bg-amber-500/5',
           bulletColor: 'bg-amber-500 shadow-amber-500/30',
         };
       case 'excused':
         return {
           text: 'معذور',
           color: 'text-indigo-505 bg-indigo-500/10 border-indigo-500/15',
-          badge: 'border-indigo-505/15 text-indigo-600 dark:text-indigo-400 bg-indigo-500/5',
+          badge: 'border-indigo-505/15 text-indigo-400 bg-indigo-500/5',
           bulletColor: 'bg-indigo-500 shadow-indigo-500/30',
         };
       case 'absent':
         return {
           text: 'غياب',
           color: 'text-rose-505 bg-rose-500/10 border-rose-500/15',
-          badge: 'border-rose-505/15 text-rose-600 dark:text-rose-450 bg-rose-500/5',
+          badge: 'border-rose-505/15 text-rose-450 bg-rose-500/5',
           bulletColor: 'bg-rose-500 shadow-rose-500/30',
         };
     }
@@ -160,13 +160,13 @@ export default function Attendance({ records }: AttendanceProps) {
         </div>
       </div>
 
-      <div className="bg-white/80 backdrop-blur-md dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-850/60 p-5 rounded-3xl shadow-[0_4px_18px_rgba(15,23,42,0.02)] space-y-4 relative overflow-hidden">
+      <div className="bg-slate-900/40 backdrop-blur-md border border-slate-850/60 p-5 rounded-3xl shadow-[0_4px_18px_rgba(15,23,42,0.02)] space-y-4 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-emerald-500/5 to-transparent rounded-full blur-xl" />
-        <div className="absolute -bottom-6 -left-6 w-28 h-28 bg-indigo-500/5 dark:bg-indigo-505/5 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -bottom-6 -left-6 w-28 h-28 bg-indigo-505/5 rounded-full blur-2xl pointer-events-none" />
 
-        <div className="pb-2 border-b border-gray-100/60 dark:border-slate-850/50 select-none space-y-1">
-          <h3 className="text-xs font-black text-indigo-600 dark:text-indigo-400">الخريطة الحرارية الموحدة (آخر 28 سجل)</h3>
-          <span className="text-[10px] text-neutral-450 dark:text-slate-300 block">اضغط على المربع لعرض تفاصيل اليوم الأكاديمي</span>
+        <div className="pb-2 border-b border-slate-850/50 select-none space-y-1">
+          <h3 className="text-xs font-black text-indigo-400">الخريطة الحرارية الموحدة (آخر 28 سجل)</h3>
+          <span className="text-[10px] text-slate-300 block">اضغط على المربع لعرض تفاصيل اليوم الأكاديمي</span>
         </div>
 
         <div className="grid grid-cols-7 gap-2.5 py-1 justify-items-center" dir="rtl">
@@ -176,7 +176,7 @@ export default function Attendance({ records }: AttendanceProps) {
               late: 'bg-amber-500 shadow-amber-500/15 border-amber-500/25',
               absent: 'bg-rose-500 shadow-rose-500/15 border-rose-500/25',
               excused: 'bg-indigo-500 shadow-indigo-500/15 border-indigo-500/25',
-              empty: 'bg-slate-100 dark:bg-slate-800/30 border-slate-200/20 dark:border-slate-800/10 opacity-30 cursor-default shadow-none pointer-events-none',
+              empty: 'bg-slate-800/30 border-slate-800/10 opacity-30 cursor-default shadow-none pointer-events-none',
             };
             const isEmpty = day.status === 'empty';
 
@@ -191,21 +191,21 @@ export default function Attendance({ records }: AttendanceProps) {
                     playHapticTap();
                   }
                 }}
-                className={`w-9 h-9 rounded-xl ${colors[day.status as keyof typeof colors] || 'bg-slate-200 dark:bg-slate-800'} border border-transparent transition-all shadow-xs ${isEmpty ? '' : 'cursor-pointer'}`}
+                className={`w-9 h-9 rounded-xl ${colors[day.status as keyof typeof colors] || 'bg-slate-800'} border border-transparent transition-all shadow-xs ${isEmpty ? '' : 'cursor-pointer'}`}
                 title={isEmpty ? 'لا توجد حصة مسجلة في هذا اليوم' : 'اضغط للتفاصيل'}
               />
             );
           })}
         </div>
 
-        <div className="flex items-center gap-3.5 text-[10px] text-neutral-500 dark:text-slate-300 justify-center flex-wrap select-none pt-2 border-t border-gray-100/50 dark:border-slate-850/50 font-sans">
+        <div className="flex items-center gap-3.5 text-[10px] text-slate-300 justify-center flex-wrap select-none pt-2 border-t border-slate-850/50 font-sans">
           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-emerald-500 shadow-sm" /> حضور ({presentCount})</span>
           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-amber-500 shadow-sm" /> متأخر ({lateCount})</span>
           <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-rose-500 shadow-sm" /> غياب ({absentCount})</span>
         </div>
       </div>
 
-      <div className="bg-white/80 backdrop-blur-md dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-850/60 p-4.5 rounded-3xl space-y-3.5 shadow-[0_4px_18px_rgba(15,23,42,0.02)] relative overflow-hidden">
+      <div className="bg-slate-900/40 backdrop-blur-md border border-slate-850/60 p-4.5 rounded-3xl space-y-3.5 shadow-[0_4px_18px_rgba(15,23,42,0.02)] relative overflow-hidden">
         <div className="absolute top-0 left-0 w-28 h-28 bg-gradient-to-br from-amber-500/5 to-transparent rounded-full blur-2xl pointer-events-none" />
         <div className="relative">
           <label htmlFor="attendance-search" className="sr-only">البحث في سجلات الحضور</label>
@@ -215,7 +215,7 @@ export default function Attendance({ records }: AttendanceProps) {
             placeholder="البحث باسم المحاضرة أو المدرس..."
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            className="w-full text-xs p-3 pr-10 text-right bg-neutral-50 dark:bg-slate-950 border border-neutral-200/50 dark:border-slate-850 rounded-2xl focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-800 dark:text-slate-100 transition-all font-sans"
+            className="w-full text-xs p-3 pr-10 text-right bg-slate-950 border border-slate-850 rounded-2xl focus:outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100 transition-all font-sans"
           />
           <Search className="w-4 h-4 text-neutral-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
         </div>
@@ -237,7 +237,7 @@ export default function Attendance({ records }: AttendanceProps) {
               className={`px-3.5 py-1.5 rounded-xl font-bold font-sans text-[10px] shrink-0 cursor-pointer transition-all ${
                 statusFilter === item.tag
                   ? 'bg-indigo-600 text-white font-extrabold shadow-sm shadow-indigo-500/20'
-                  : 'bg-neutral-50 dark:bg-slate-950 text-neutral-450 dark:text-zinc-300 hover:bg-neutral-200 dark:hover:bg-slate-850/60'
+                  : 'bg-slate-950 text-zinc-300 hover:bg-slate-850/60'
               }`}
             >
               {item.title}
@@ -247,21 +247,21 @@ export default function Attendance({ records }: AttendanceProps) {
       </div>
 
       <div className="space-y-3">
-        <h3 className="text-xs font-black text-gray-400 dark:text-slate-300 font-sans tracking-wide pr-1">أرشيف المحاضرات المكتملة وتفاصيل الغياب</h3>
+        <h3 className="text-xs font-black text-slate-300 font-sans tracking-wide pr-1">أرشيف المحاضرات المكتملة وتفاصيل الغياب</h3>
 
         <AnimatePresence mode="popLayout">
           {isLoading ? (
             Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="p-4 bg-white/80 backdrop-blur-sm dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-850 rounded-2xl animate-pulse flex justify-between">
-                <div className="w-14 h-5.5 bg-gray-200 dark:bg-slate-800 rounded-lg animate-pulse" />
+              <div key={index} className="p-4 bg-slate-900/40 backdrop-blur-sm border border-slate-850 rounded-2xl animate-pulse flex justify-between">
+                <div className="w-14 h-5.5 bg-slate-800 rounded-lg animate-pulse" />
                 <div className="space-y-2 flex-1 text-right flex flex-col pr-4">
-                  <div className="w-1/3 h-4 bg-gray-200 dark:bg-slate-800 rounded-lg animate-pulse" />
-                  <div className="w-1/4 h-3 bg-gray-200 dark:bg-slate-800 rounded-lg animate-pulse" />
+                  <div className="w-1/3 h-4 bg-slate-800 rounded-lg animate-pulse" />
+                  <div className="w-1/4 h-3 bg-slate-800 rounded-lg animate-pulse" />
                 </div>
               </div>
             ))
           ) : filteredRecords.length === 0 ? (
-            <div className="p-8 text-center rounded-2.5xl bg-white/80 backdrop-blur-sm dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-850 select-none font-sans text-xs text-neutral-450 dark:text-slate-300">
+            <div className="p-8 text-center rounded-2.5xl bg-slate-900/40 backdrop-blur-sm border border-slate-850 select-none font-sans text-xs text-slate-300">
               لا توجد أي محاضرات أو التماسات مسجلة مطابقة لخيارات التصفية الحالية.
             </div>
           ) : (
@@ -277,7 +277,7 @@ export default function Attendance({ records }: AttendanceProps) {
                   layoutId={`detail-log-${log.id}`}
                   whileHover={{ scale: 1.01, borderRightWidth: '5px' }}
                   whileTap={{ scale: 0.99 }}
-                  className="p-4 bg-white/80 backdrop-blur-sm dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-850/60 rounded-2xl overflow-hidden shadow-[0_2px_10px_rgba(15,23,42,0.015)] hover:shadow-[0_8px_24px_rgba(15,23,42,0.03)] hover:border-indigo-400 dark:hover:border-indigo-505/30 transition-all flex items-center justify-between text-right relative cursor-pointer group"
+                  className="p-4 bg-slate-900/40 backdrop-blur-sm border border-slate-850/60 rounded-2xl overflow-hidden shadow-[0_2px_10px_rgba(15,23,42,0.015)] hover:shadow-[0_8px_24px_rgba(15,23,42,0.03)] hover:border-indigo-505/30 transition-all flex items-center justify-between text-right relative cursor-pointer group"
                 >
                   <div className={`absolute right-0 top-0 bottom-0 w-1 ${details.bulletColor} group-hover:w-1.5 transition-all`} />
 
@@ -287,8 +287,8 @@ export default function Attendance({ records }: AttendanceProps) {
                     </span>
 
                     <div className="text-right">
-                      <h4 className="text-xs font-black text-slate-800 dark:text-zinc-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">حصة يوم {formatArabicDate(log.date)}</h4>
-                      <p className="text-[10px] text-neutral-450 dark:text-slate-300 font-mono mt-0.5">{log.subject} • {formatArabicTime(log.time)}</p>
+                      <h4 className="text-xs font-black text-zinc-100 group-hover:text-indigo-400 transition-colors">حصة يوم {formatArabicDate(log.date)}</h4>
+                      <p className="text-[10px] text-slate-300 font-mono mt-0.5">{log.subject} • {formatArabicTime(log.time)}</p>
                     </div>
                   </div>
 
@@ -320,7 +320,7 @@ export default function Attendance({ records }: AttendanceProps) {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 16 }}
               transition={{ type: 'spring', damping: 28, stiffness: 260 }}
-              className="bg-white dark:bg-slate-900 rounded-[28px] border border-white/10 p-6 z-10 w-full max-w-lg space-y-4 max-h-[85vh] overflow-y-auto select-none font-sans text-right"
+              className="bg-slate-900 rounded-[28px] border border-white/10 p-6 z-10 w-full max-w-lg space-y-4 max-h-[85vh] overflow-y-auto select-none font-sans text-right"
               dir="rtl"
               role="dialog"
               aria-modal="true"
@@ -328,15 +328,15 @@ export default function Attendance({ records }: AttendanceProps) {
               aria-describedby="attendance-daylog-description"
               tabIndex={-1}
             >
-              <div className="flex items-center justify-between border-b border-gray-100/60 dark:border-slate-850/50 pb-3">
+              <div className="flex items-center justify-between border-b border-slate-850/50 pb-3">
                 <div className="text-right">
-                  <h3 id="attendance-daylog-title" className="text-sm font-black text-slate-800 dark:text-white">حصة يوم {getArabicDayName(selectedDayLog.date)}</h3>
-                  <span id="attendance-daylog-description" className="text-[10px] text-neutral-500 dark:text-zinc-300 block mt-0.5 font-mono">{formatArabicDate(selectedDayLog.date)}</span>
+                  <h3 id="attendance-daylog-title" className="text-sm font-black text-white">حصة يوم {getArabicDayName(selectedDayLog.date)}</h3>
+                  <span id="attendance-daylog-description" className="text-[10px] text-zinc-300 block mt-0.5 font-mono">{formatArabicDate(selectedDayLog.date)}</span>
                 </div>
                 <button
                   type="button"
                   onClick={closeDayLog}
-                  className="p-1.5 hover:bg-neutral-100 dark:hover:bg-slate-800 rounded-full text-neutral-450 cursor-pointer"
+                  className="p-1.5 hover:bg-slate-800 rounded-full text-neutral-450 cursor-pointer"
                   aria-label="إغلاق تفاصيل سجل الحضور"
                 >
                   <X className="w-4.5 h-4.5" />
@@ -344,13 +344,13 @@ export default function Attendance({ records }: AttendanceProps) {
               </div>
 
               <div className="space-y-3.5 pr-1 text-right">
-                <div className="flex justify-between text-right gap-4 border-b border-gray-100/50 dark:border-slate-850/50 pb-2">
-                  <span className="text-xs text-neutral-500 dark:text-zinc-300">وقت الحضور:</span>
-                  <span className="text-xs font-bold text-gray-800 dark:text-zinc-200 font-sans">{formatArabicTime(selectedDayLog.time)}</span>
+                <div className="flex justify-between text-right gap-4 border-b border-slate-850/50 pb-2">
+                  <span className="text-xs text-zinc-300">وقت الحضور:</span>
+                  <span className="text-xs font-bold text-zinc-200 font-sans">{formatArabicTime(selectedDayLog.time)}</span>
                 </div>
 
-                <div className="flex justify-between text-right gap-4 border-b border-gray-100/50 dark:border-slate-850/50 pb-2">
-                  <span className="text-xs text-neutral-500 dark:text-zinc-300">الحالة:</span>
+                <div className="flex justify-between text-right gap-4 border-b border-slate-850/50 pb-2">
+                  <span className="text-xs text-zinc-300">الحالة:</span>
                   <span
                     className={`inline-flex items-center gap-1.5 text-xs font-black ${
                       selectedDayLog.status === 'present'
@@ -369,14 +369,14 @@ export default function Attendance({ records }: AttendanceProps) {
                   </span>
                 </div>
 
-                <div className="flex justify-between text-right gap-4 border-b border-gray-100/50 dark:border-slate-850/50 pb-2">
-                  <span className="text-xs text-neutral-500 dark:text-zinc-300">تاريخ التسجيل:</span>
-                  <span className="text-xs font-bold text-gray-800 dark:text-zinc-200 font-sans">{formatArabicDateShort(selectedDayLog.date)}</span>
+                <div className="flex justify-between text-right gap-4 border-b border-slate-850/50 pb-2">
+                  <span className="text-xs text-zinc-300">تاريخ التسجيل:</span>
+                  <span className="text-xs font-bold text-zinc-200 font-sans">{formatArabicDateShort(selectedDayLog.date)}</span>
                 </div>
 
-                <div className="p-3.5 bg-neutral-50 dark:bg-slate-950 rounded-2xl border border-neutral-200/50 dark:border-slate-850 space-y-1">
-                  <span className="block text-[10px] text-indigo-500 dark:text-indigo-400 font-bold">الملاحظات:</span>
-                  <p className="text-xs text-gray-600 dark:text-zinc-350 leading-relaxed">
+                <div className="p-3.5 bg-slate-950 rounded-2xl border border-slate-850 space-y-1">
+                  <span className="block text-[10px] text-indigo-400 font-bold">الملاحظات:</span>
+                  <p className="text-xs text-zinc-350 leading-relaxed">
                     {selectedDayLog.remarks || 'لا توجد ملاحظات إضافية على هذا السجل.'}
                   </p>
                 </div>

@@ -2,11 +2,11 @@
 @import "tailwindcss";
 
 /* Dark mode: تحسين قراءة النصوص الرمادية */
-.dark .text-gray-400 { color: #d1d5db; }
-.dark .text-gray-500 { color: #d1d5db; }
-.dark .text-gray-600 { color: #cbd5e1; }
-.dark .text-gray-700 { color: #cbd5e1; }
-.dark .text-gray-800 { color: #e2e8f0; }
+.text-gray-400 { color: #d1d5db; }
+.text-gray-500 { color: #d1d5db; }
+.text-gray-600 { color: #cbd5e1; }
+.text-gray-700 { color: #cbd5e1; }
+.text-gray-800 { color: #e2e8f0; }
 
 @theme {
   --font-sans: "Cairo", "Tajawal", "Inter", ui-sans-serif, system-ui, sans-serif;
@@ -30,25 +30,15 @@
 }
 
 :root {
-  --text-primary: #0F172A; /* Slate 900 */
-  --text-secondary: #0F172A; /* High contrast black */
-  --text-muted: #0F172A; /* High contrast black */
-  --text-disabled: rgba(15, 23, 42, 0.7);
-  
-  --bg-app: #F8FAFC;
-  --bg-card: rgba(255, 255, 255, 0.88);
-  --border-card: rgba(226, 232, 240, 0.72);
-}
-
-.dark {
-  --text-primary: #FFFFFF; /* Pure White */
-  --text-secondary: #FFFFFF; /* Pure White */
-  --text-muted: #FFFFFF; /* Pure White */
+  color-scheme: dark;
+  --text-primary: #FFFFFF;
+  --text-secondary: #FFFFFF;
+  --text-muted: #FFFFFF;
   --text-disabled: rgba(255, 255, 255, 0.9);
   
-  --bg-app: #0B0F19; /* Premium slate/navy instead of pure black */
-  --bg-card: rgba(17, 24, 39, 0.75); /* Deep slate card with opacity */
-  --border-card: rgba(255, 255, 255, 0.08); /* Balanced fine-line borders */
+  --bg-app: #0B0F19;
+  --bg-card: rgba(17, 24, 39, 0.75);
+  --border-card: rgba(255, 255, 255, 0.08);
 }
 
 /* Custom fade and glow effects for premium dark/light SaaS system */
@@ -67,17 +57,7 @@
   }
 }
 
-:root:not(.dark) {
-  background-color: var(--bg-app);
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(238, 242, 255, 0.9) 0px, transparent 55%),
-    radial-gradient(at 50% 0%, rgba(245, 247, 251, 0.9) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(224, 231, 255, 0.6) 0px, transparent 50%),
-    radial-gradient(at 50% 100%, rgba(238, 242, 255, 0.7) 0px, transparent 50%);
-  background-attachment: fixed;
-}
-
-.dark {
+:root {
   background-color: var(--bg-app);
   background-image: 
     radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 65%),
@@ -85,24 +65,6 @@
     radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.06) 0px, transparent 50%),
     radial-gradient(at 50% 100%, rgba(15, 23, 42, 0.9) 0px, transparent 50%);
   background-attachment: fixed;
-}
-
-/* Premium Light Theme overrides for modern fintech look */
-.light-mode-card {
-  background: rgba(255, 255, 255, 0.88) !important;
-  backdrop-filter: blur(16px) saturate(120%);
-  -webkit-backdrop-filter: blur(16px) saturate(120%);
-  border: 1px solid rgba(226, 232, 240, 0.72) !important;
-  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.025), 0 1px 4px -1px rgba(15, 23, 42, 0.015) !important;
-}
-
-.light-mode-card-glow {
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.light-mode-card-glow:hover {
-  box-shadow: 0 10px 25px -4px rgba(99, 102, 241, 0.04), 0 4px 12px -2px rgba(15, 23, 42, 0.02) !important;
-  border-color: rgba(99, 102, 241, 0.2) !important;
-  transform: translateY(-1px);
 }
 
 .animate-glow-orb-1 {
@@ -121,25 +83,10 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.glass-panel-light {
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(12px) saturate(140%);
-  -webkit-backdrop-filter: blur(12px) saturate(140%);
-  border: 1px solid rgba(226, 232, 240, 0.72);
-  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.025), 0 1px 4px -1px rgba(15, 23, 42, 0.015);
-}
-
-.dark .glass-header {
+.glass-header {
   background: rgba(10, 15, 30, 0.7);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.glass-header {
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
-  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.015);
 }
 
 /* Scrollbar customizations */
@@ -152,13 +99,8 @@
   background: transparent;
 }
 
-.dark ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 999px;
-}
-
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 999px;
 }
 
@@ -166,15 +108,98 @@
 .hover-glow {
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.dark .hover-glow:hover {
+.hover-glow:hover {
   box-shadow: 0 0 30px rgba(99, 102, 241, 0.18);
   border-color: rgba(99, 102, 241, 0.3);
   transform: translateY(-2px);
 }
-.hover-glow:hover {
-  box-shadow: 0 12px 30px rgba(99, 102, 241, 0.08);
-  border-color: rgba(99, 102, 241, 0.15);
-  transform: translateY(-2px);
+
+/* PWA Install Banner */
+#pwa-install-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  transform: translateY(100%);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+#pwa-install-banner.pwa-install-visible {
+  transform: translateY(0);
+}
+.pwa-install-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  background: rgba(17, 24, 39, 0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.3);
+}
+.pwa-install-icon {
+  font-size: 28px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.pwa-install-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  text-align: right;
+}
+.pwa-install-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #ffffff;
+  font-family: "Cairo", "Tajawal", sans-serif;
+}
+.pwa-install-desc {
+  font-size: 10px;
+  color: #94a3b8;
+  font-family: "Cairo", "Tajawal", sans-serif;
+  margin-top: 2px;
+}
+.pwa-install-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.pwa-install-btn {
+  background: #6366f1;
+  color: #ffffff;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 800;
+  font-family: "Cairo", "Tajawal", sans-serif;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.pwa-install-btn:hover {
+  background: #4f46e5;
+}
+.pwa-install-close {
+  background: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+.pwa-install-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
 }
 
 
