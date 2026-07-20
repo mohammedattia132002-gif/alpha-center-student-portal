@@ -213,25 +213,26 @@ export async function loginStudent(phoneNumber: string, studentCode: string): Pr
   return null;
 }
 
-export async function fetchAttendance(studentId: string): Promise<AttendanceRecord[]> {
+export async function fetchAttendance(student: StudentProfile): Promise<AttendanceRecord[]> {
+  const studentId = student.id;
   const [liveRecords, snapshotRecords] = await Promise.all([
-    withReadRetry('attendance', () => dbAdapter.getAttendance(studentId)),
+    withReadRetry('attendance', () => dbAdapter.getAttendance(student)),
     Promise.resolve(getSnapshotAttendance(studentId)),
   ]);
 
   return mergeAttendanceRecords(liveRecords, snapshotRecords);
 }
 
-export async function fetchPayments(studentId: string): Promise<PaymentRecord[]> {
-  return withReadRetry('payments', () => dbAdapter.getPayments(studentId));
+export async function fetchPayments(student: StudentProfile): Promise<PaymentRecord[]> {
+  return withReadRetry('payments', () => dbAdapter.getPayments(student));
 }
 
 export async function fetchGrades(studentId: string): Promise<GradeRecord[]> {
   return withReadRetry('grades', () => dbAdapter.getGrades(studentId));
 }
 
-export async function fetchGroupTimes(studentId: string): Promise<GroupTimeSlot[]> {
-  return withReadRetry('groupTimes', () => dbAdapter.getGroupTimes(studentId));
+export async function fetchGroupTimes(student: StudentProfile): Promise<GroupTimeSlot[]> {
+  return withReadRetry('groupTimes', () => dbAdapter.getGroupTimes(student));
 }
 
 export async function fetchExams(student: StudentProfile): Promise<Exam[]> {

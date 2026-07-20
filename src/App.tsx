@@ -282,11 +282,11 @@ const [groupTimes, setGroupTimes] = useState<GroupTimeSlot[]>(() => []);
         try {
           const sid = currentStudent.id;
           const [attendanceResult, paymentsResult, gradesResult, examsResult, groupTimesResult] = await Promise.all([
-            loadPortalSection('attendance', () => apiFetchAttendance(sid)),
-            loadPortalSection('payments', () => apiFetchPayments(sid)),
+            loadPortalSection('attendance', () => apiFetchAttendance(currentStudent)),
+            loadPortalSection('payments', () => apiFetchPayments(currentStudent)),
             loadPortalSection('grades', () => apiFetchGrades(sid)),
             loadPortalSection('exams', () => apiFetchExams(currentStudent)),
-            loadPortalSection('groupTimes', () => apiFetchGroupTimes(sid)),
+            loadPortalSection('groupTimes', () => apiFetchGroupTimes(currentStudent)),
           ]);
 
           const sectionErrors = [attendanceResult, paymentsResult, gradesResult, examsResult, groupTimesResult]
@@ -496,7 +496,7 @@ const [groupTimes, setGroupTimes] = useState<GroupTimeSlot[]>(() => []);
             setCurrentStudent(student);
             persistStudentSession(student);
             clearLegacyStudentData();
-          }} 
+          }}
           centerConfig={centerConfig}
         />
       </>
@@ -602,7 +602,7 @@ const [groupTimes, setGroupTimes] = useState<GroupTimeSlot[]>(() => []);
 
           {/* Quick interactive utility badge */}
           <div className="flex items-center gap-1.5">
-            <button 
+            <button
               onClick={() => { setShowNotifications(!showNotifications); playMobileHapticTap('light'); }}
               className="p-2 hover:bg-slate-900 rounded-xl transition-all relative border border-slate-800 text-indigo-400 cursor-pointer"
               title="مركز الإشعارات الأكاديمية"

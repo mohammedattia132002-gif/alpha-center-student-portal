@@ -49,7 +49,7 @@ export function useStudentStats(attendance: AttendanceRecord[], grades: GradeRec
           return b.id.localeCompare(a.id)
         })[0]
 
-    const latestGradePercent = latestGrade
+    const latestGradePercent = latestGrade && latestGrade.maxScore > 0
       ? Math.round((latestGrade.score / latestGrade.maxScore) * 100)
       : 0
 

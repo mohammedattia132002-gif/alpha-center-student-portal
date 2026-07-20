@@ -45,6 +45,7 @@ const DEFAULT_AVATAR =
 
 // Lazy initialization of Supabase client to prevent immediate startup crash
 let _supabaseClient: any = null;
+const pendingPortalPaymentRequestIds = new Map<string, string>();
 export type PortalDataReadKey = 'profile' | 'attendance' | 'payments' | 'grades' | 'exams' | 'groupTimes';
 export type PortalDataReadSource = 'live';
 export type PortalJoinFieldKey =
@@ -500,25 +501,62 @@ async function fetchRowsWithFallback<T = any>(
   return [];
 }
 
+type PortalStudentVerificationSource = Partial<StudentProfile> & Record<string, any>;
+
+function getPortalStudentVerification(student: PortalStudentVerificationSource): {
+  studentId: string;
+  studentCode: string;
+  studentPhone: string;
+} {
+  return {
+    studentId: String(student?.id || '').trim(),
+    studentCode: String(student?.studentCode ?? student?.student_code ?? '').trim(),
+    studentPhone: String(
+      student?.studentPhone
+      ?? student?.parentPhone
+      ?? student?.phone
+      ?? student?.parent_phone
+      ?? '',
+    ).trim(),
+  };
+}
+
+function requirePortalStudentVerification(student: PortalStudentVerificationSource) {
+  const verification = getPortalStudentVerification(student);
+  if (!verification.studentId || !verification.studentCode || !verification.studentPhone) {
+    throw new Error('portal_student_verification_required');
+  }
+  return verification;
+}
+
 async function fetchFinancialObligations(
   client: any,
-  studentId: string,
+  student: PortalStudentVerificationSource,
 ): Promise<PortalFinancialObligationRow[]> {
-  return fetchRowsWithFallback<PortalFinancialObligationRow>(
-    client,
-    'financial_obligations',
-    [
-      (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId).is('deleted_at', null),
-      (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId),
-      (query) => query.eq('student_id', studentId).is('deleted_at', null),
-      (query) => query.eq('student_id', studentId),
-    ],
-    {
-      orderVariants: [['due_date'], ['month_key'], ['created_at'], []],
-      continueOnEmpty: true,
-      diagnosticContext: { studentId },
-    },
-  );
+  const verification = requirePortalStudentVerification(student);
+  const { data, error } = await client.rpc('portal_financial_obligations', {
+    p_tenant_id: PORTAL_TENANT_ID,
+    p_student_id: verification.studentId,
+    p_student_code: verification.studentCode,
+    p_student_phone: verification.studentPhone,
+  });
+  if (error) throw error;
+  return Array.isArray(data) ? data : [];
+}
+
+async function fetchStudentPayments(
+  client: any,
+  student: PortalStudentVerificationSource,
+): Promise<Record<string, any>[]> {
+  const verification = requirePortalStudentVerification(student);
+  const { data, error } = await client.rpc('portal_student_payments', {
+    p_tenant_id: PORTAL_TENANT_ID,
+    p_student_id: verification.studentId,
+    p_student_code: verification.studentCode,
+    p_student_phone: verification.studentPhone,
+  });
+  if (error) throw error;
+  return Array.isArray(data) ? data : [];
 }
 
 // app_settings.setting_value is a JSON column. The desktop stores plain scalar strings,
@@ -581,13 +619,22 @@ async function resolveGroupName(client: any, studentRow: Record<string, any>): P
   return String(groupRow?.name || '').trim() || 'المجموعة التعليمية';
 }
 
-async function resolveStudentGroupSummary(client: any, studentId: string): Promise<Record<string, any> | null> {
-  const { data: studentRow } = await client
-    .from('students')
-    .select('id,group_id,grade_level')
-    .eq('tenant_id', PORTAL_TENANT_ID)
-    .eq('id', studentId)
-    .maybeSingle();
+async function resolveStudentGroupSummary(
+  client: any,
+  student: PortalStudentVerificationSource,
+): Promise<Record<string, any> | null> {
+  const verification = requirePortalStudentVerification(student);
+  const { data: verifiedRows, error: verificationError } = await client.rpc('portal_verified_student', {
+    p_tenant_id: PORTAL_TENANT_ID,
+    p_student_id: verification.studentId,
+    p_student_code: verification.studentCode,
+    p_student_phone: verification.studentPhone,
+  });
+  if (verificationError) throw verificationError;
+
+  const studentRow = Array.isArray(verifiedRows) ? verifiedRows[0] : null;
+  if (!studentRow) return null;
+  const studentId = verification.studentId;
 
   let groupId = safeUuid(studentRow?.group_id);
   const { data: enrollments } = await client
@@ -759,7 +806,7 @@ async function buildStudentProfile(client: any, studentRow: Record<string, any>)
   const groupName = await resolveGroupName(client, studentRow);
   let obligations: PortalFinancialObligationRow[] = [];
   try {
-    obligations = await fetchFinancialObligations(client, String(studentRow.id || ''));
+    obligations = await fetchFinancialObligations(client, studentRow);
   } catch (error) {
     logPortalReadError('financial_obligations', { studentId: studentRow.id }, error);
   }
@@ -787,7 +834,6 @@ export const dbAdapter = {
   async login(studentCode: string, phone: string): Promise<{ success: boolean; student?: StudentProfile; error?: string }> {
     const cleanCode = studentCode.trim();
     const cleanPhone = phone.trim();
-    const normalizedCode = normalizeStudentCode(cleanCode);
 
     if (!isSupabaseConfigured()) {
       return { success: false, error: 'Supabase غير مهيأ. لا يمكن تسجيل الدخول الآن.' };
@@ -795,72 +841,13 @@ export const dbAdapter = {
 
     const client = getSupabase();
     try {
-      const phoneVariants = getPhoneSearchVariants(cleanPhone);
-      const codeVariants = Array.from(
-        new Set([cleanCode, toAsciiDigits(cleanCode), normalizeIdentity(cleanCode), normalizedCode].filter(Boolean)),
-      );
-      const phoneClause = phoneVariants
-        .flatMap((variant) => [`phone.eq.${variant}`, `parent_phone.eq.${variant}`])
-        .join(',');
-
-      let candidates: Record<string, any>[] = [];
-      if (phoneClause) {
-        const { data, error } = await client
-          .from('students')
-          .select('*')
-          .eq('tenant_id', PORTAL_TENANT_ID)
-          .eq('is_active', true)
-          .is('deleted_at', null)
-          .or(phoneClause)
-          .limit(50);
-
-        if (error) throw error;
-        candidates = Array.isArray(data) ? data : [];
-      }
-
-      let matchedRows = candidates.filter((row) => {
-        const studentCodeMatches = codeVariants.some(
-          (variant) => normalizeStudentCode(row?.student_code) === normalizeStudentCode(variant),
-        );
-        const phoneMatches =
-          matchesPhoneValue(row?.phone, cleanPhone) || matchesPhoneValue(row?.parent_phone, cleanPhone);
-        return studentCodeMatches && phoneMatches;
+      const { data, error } = await client.rpc('portal_login_student', {
+        p_tenant_id: PORTAL_TENANT_ID,
+        p_student_code: cleanCode,
+        p_student_phone: cleanPhone,
       });
-
-      if (matchedRows.length === 0 && codeVariants.length > 0) {
-        let { data, error } = await client
-          .from('students')
-          .select('*')
-          .eq('tenant_id', PORTAL_TENANT_ID)
-          .eq('is_active', true)
-          .is('deleted_at', null)
-          .in('student_code', codeVariants)
-          .limit(20);
-
-        if (error) throw error;
-        let codeRows = Array.isArray(data) ? data : [];
-
-        if (codeRows.length === 0 && normalizedCode) {
-          const fuzzy = await client
-            .from('students')
-            .select('*')
-            .eq('tenant_id', PORTAL_TENANT_ID)
-            .eq('is_active', true)
-            .is('deleted_at', null)
-            .ilike('student_code', `%${cleanCode}%`)
-            .limit(50);
-
-          if (fuzzy.error) throw fuzzy.error;
-          codeRows = Array.isArray(fuzzy.data) ? fuzzy.data : [];
-        }
-
-        matchedRows = codeRows.filter((row) => {
-          const studentCodeMatches = normalizeStudentCode(row?.student_code) === normalizedCode;
-          const phoneMatches =
-            matchesPhoneValue(row?.phone, cleanPhone) || matchesPhoneValue(row?.parent_phone, cleanPhone);
-          return studentCodeMatches && phoneMatches;
-        });
-      }
+      if (error) throw error;
+      const matchedRows = Array.isArray(data) ? data : [];
 
       if (matchedRows.length === 0) {
         return { success: false, error: 'بيانات الدخول غير صحيحة. تأكد من كود الطالب ورقم الهاتف.' };
@@ -1000,14 +987,17 @@ export const dbAdapter = {
   },
 
 // Load group schedule times for the student's group
-  async getGroupTimes(studentId: string): Promise<GroupTimeSlot[]> {
+  async getGroupTimes(student: StudentProfile): Promise<GroupTimeSlot[]> {
     if (!isSupabaseConfigured()) {
       return [];
     }
 
+    const studentId = String(student?.id || '').trim();
+    if (!studentId) return [];
+
     const client = getSupabase();
     try {
-      const groupSummary = await resolveStudentGroupSummary(client, studentId);
+      const groupSummary = await resolveStudentGroupSummary(client, student);
       const groupId = safeUuid(groupSummary?.id);
       if (!groupId) {
         recordPortalDataRead('groupTimes', 'live');
@@ -1131,7 +1121,10 @@ export const dbAdapter = {
   },
 
   // Load attendance
-  async getAttendance(studentId: string): Promise<AttendanceRecord[]> {
+  async getAttendance(student: StudentProfile): Promise<AttendanceRecord[]> {
+    const studentId = String(student?.id || '').trim();
+    if (!studentId) return [];
+
     let supabaseRecords: AttendanceRecord[] = [];
     if (isSupabaseConfigured()) {
       const client = getSupabase();
@@ -1196,7 +1189,7 @@ export const dbAdapter = {
         }
 
         if (Array.isArray(data)) {
-          const fallbackGroup = await resolveStudentGroupSummary(client, studentId).catch(() => null);
+          const fallbackGroup = await resolveStudentGroupSummary(client, student).catch(() => null);
           const sessionRows: any[] = [];
           const groupIds = Array.from(
             new Set(
@@ -1256,7 +1249,10 @@ export const dbAdapter = {
   },
 
   // Load payments
-  async getPayments(studentId: string): Promise<PaymentRecord[]> {
+  async getPayments(student: StudentProfile): Promise<PaymentRecord[]> {
+    const studentId = String(student?.id || '').trim();
+    if (!studentId) return [];
+
     let finalRecords: PaymentRecord[] = [];
     
     if (isSupabaseConfigured()) {
@@ -1266,22 +1262,8 @@ export const dbAdapter = {
         let obligationRows: PortalFinancialObligationRow[] = [];
 
         const [paymentsResult, obligationsResult] = await Promise.allSettled([
-          fetchRowsWithFallback<Record<string, any>>(
-            client,
-            'payments',
-            [
-              (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId).is('deleted_at', null),
-              (query) => query.eq('tenant_id', PORTAL_TENANT_ID).eq('student_id', studentId),
-              (query) => query.eq('student_id', studentId).is('deleted_at', null),
-              (query) => query.eq('student_id', studentId),
-            ],
-            {
-              orderVariants: [['paid_at'], ['timestamp'], ['date'], ['payment_date'], ['created_at'], []],
-              continueOnEmpty: true,
-              diagnosticContext: { studentId },
-            },
-          ),
-          fetchFinancialObligations(client, studentId),
+          fetchStudentPayments(client, student),
+          fetchFinancialObligations(client, student),
         ]);
 
         if (paymentsResult.status === 'fulfilled') {
@@ -1304,7 +1286,9 @@ export const dbAdapter = {
             title: String(title).trim(),
             amount: Number(row.amount || 0),
             dueDate: formatDateOnly(row.date || row.payment_date || paidAt),
-            paidDate: status === 'paid' && paidAt ? formatDateOnly(paidAt) : undefined,
+            paidDate: (status === 'paid' || status === 'partial') && paidAt
+              ? formatDateOnly(paidAt)
+              : undefined,
             status,
             invoiceNo: String(row.receipt_no || row.receipt_id || row.transaction_id || row.id),
             category: inferPaymentCategory(title),
@@ -1452,16 +1436,33 @@ export const dbAdapter = {
           return { success: false, error: 'payment_amount_invalid' };
         }
 
+        const normalizedInvoiceId = String(invoiceId || '').trim();
+        if (!normalizedInvoiceId) {
+          return { success: false, error: 'obligation_not_found' };
+        }
+
+        const requestKey = [
+          studentId,
+          normalizedInvoiceId,
+          normalizedAmount === null ? 'remaining' : normalizedAmount.toFixed(2),
+        ].join(':');
+        const requestId = pendingPortalPaymentRequestIds.get(requestKey) || crypto.randomUUID();
+        pendingPortalPaymentRequestIds.set(requestKey, requestId);
+
         const { data, error } = await client.rpc('portal_pay_invoice', {
           p_tenant_id: PORTAL_TENANT_ID,
-          p_invoice_id: String(invoiceId || '').trim(),
+          p_invoice_id: normalizedInvoiceId,
           p_paid_at: new Date(`${paidDate}T12:00:00`).toISOString(),
           p_student_id: studentId,
           p_student_code: studentCode,
           p_student_phone: studentPhone,
+          p_request_id: requestId,
           p_amount: normalizedAmount,
         });
-        if (!error && data === true) return { success: true };
+        if (!error && (data === true || data?.success === true)) {
+          pendingPortalPaymentRequestIds.delete(requestKey);
+          return { success: true };
+        }
         if (!error) return { success: false, error: 'portal_payment_not_applied' };
         console.error('Error paying invoice in Supabase:', error);
         return { success: false, error };
@@ -1474,16 +1475,16 @@ export const dbAdapter = {
   },
 
   // Insert Grade
-  async insertGrade(grade: Omit<GradeRecord, 'id'> & { id?: string }, studentId: string): Promise<{ success: boolean; error?: any }> {
+  async insertGrade(
+    grade: Omit<GradeRecord, 'id'> & { id?: string },
+    student: string | StudentProfile,
+  ): Promise<{ success: boolean; error?: any }> {
     if (isSupabaseConfigured()) {
       const client = getSupabase();
       try {
-        const { data: studentRow } = await client
-          .from('students')
-          .select('id,name,grade_level')
-          .eq('tenant_id', PORTAL_TENANT_ID)
-          .eq('id', studentId)
-          .maybeSingle();
+        const studentId = typeof student === 'string' ? student : student.id;
+        const studentName = typeof student === 'string' ? null : student.name;
+        const gradeLevel = typeof student === 'string' ? null : student.academicYear;
 
         const percentage = grade.maxScore > 0 ? Number(((grade.score / grade.maxScore) * 100).toFixed(2)) : 0;
         const { error } = await client
@@ -1493,9 +1494,9 @@ export const dbAdapter = {
               id: String(grade.id || grade.sourceExamId || crypto.randomUUID()),
               tenant_id: PORTAL_TENANT_ID,
               student_id: studentId,
-              student_name: String((studentRow as any)?.name || '').trim() || null,
+              student_name: String(studentName || '').trim() || null,
               subject: grade.subjectName,
-              grade_level: String((studentRow as any)?.grade_level || '').trim() || null,
+              grade_level: String(gradeLevel || '').trim() || null,
               type: grade.category,
               score: grade.score,
               max_score: grade.maxScore,
@@ -1594,7 +1595,7 @@ export const dbAdapter = {
           .order('created_at', { ascending: false }));
 
         if (Array.isArray(platformExamRows) && platformExamRows.length > 0) {
-          const groupSummary = student?.id ? await resolveStudentGroupSummary(client, student.id) : null;
+          const groupSummary = student?.id ? await resolveStudentGroupSummary(client, student) : null;
           const visibleExamRows = platformExamRows.filter((exam: any) =>
             examMatchesStudentAudience(exam, student, groupSummary),
           );

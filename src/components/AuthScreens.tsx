@@ -21,8 +21,9 @@ interface AuthScreensProps {
   centerConfig: CenterConfig;
 }
 
+// الشاشة الافتراضية هي طلب الانضمام؛ تسجيل الدخول يُفتح عبر الرابط #login
 const getInitialAuthView = (): 'login' | 'join' => (
-  window.location.hash === '#join-request' ? 'join' : 'login'
+  window.location.hash === '#login' ? 'login' : 'join'
 );
 
 // Stage → grade cascade, matching the desktop app's `gradesByStage` map so the
@@ -211,8 +212,8 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
 
   const openView = (nextView: 'login' | 'join') => {
     setView(nextView);
-    const nextUrl = nextView === 'join'
-      ? `${window.location.pathname}${window.location.search}#join-request`
+    const nextUrl = nextView === 'login'
+      ? `${window.location.pathname}${window.location.search}#login`
       : `${window.location.pathname}${window.location.search}`;
     window.history.replaceState(null, '', nextUrl);
   };
@@ -347,33 +348,33 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
             <div className="flex p-1 bg-slate-950/45 rounded-2xl border border-slate-900/55" role="tablist" aria-label="اختيار شاشة الدخول أو طلب الانضمام">
               <button
                 type="button"
-                id="auth-tab-login"
-                role="tab"
-                aria-controls="login-form"
-                aria-selected={view === 'login'}
-                onClick={() => { openView('login'); setLoginError(''); }}
-                className={`flex-1 py-3 text-xs font-bold rounded-xl transition-all ${
-                  view === 'login' 
-                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/10 font-black' 
-                    : 'text-text-muted hover:text-text-primary'
-                }`}
-              >
-                تسجيل الدخول للطالب
-              </button>
-              <button
-                type="button"
                 id="auth-tab-join"
                 role="tab"
                 aria-controls="join-request-form"
                 aria-selected={view === 'join'}
                 onClick={() => { openView('join'); setJoinErrorMsg(''); setJoinSuccessMsg(''); }}
                 className={`flex-1 py-3 text-xs font-bold rounded-xl transition-all ${
-                  view === 'join' 
-                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/10 font-black' 
+                  view === 'join'
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/10 font-black'
                     : 'text-text-muted hover:text-text-primary'
                 }`}
               >
                 طلب انضمام جديد للسنتر
+              </button>
+              <button
+                type="button"
+                id="auth-tab-login"
+                role="tab"
+                aria-controls="login-form"
+                aria-selected={view === 'login'}
+                onClick={() => { openView('login'); setLoginError(''); }}
+                className={`flex-1 py-3 text-xs font-bold rounded-xl transition-all ${
+                  view === 'login'
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/10 font-black'
+                    : 'text-text-muted hover:text-text-primary'
+                }`}
+              >
+                تسجيل الدخول للطالب
               </button>
             </div>
 

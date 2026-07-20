@@ -39,9 +39,10 @@ export default function Grades({ records, exams }: GradesProps) {
     return () => clearTimeout(timer);
   }, [searchTerm, activeCategoryFilter]);
 
-  // Compute stats
-  const totalWeightPoints = records.reduce((acc, r) => acc + (r.gpaWeight || 0), 0);
-  const averageGPA = records.length > 0 ? (totalWeightPoints / records.length).toFixed(2) : "—";
+  // Compute stats — إجمالي الدرجات المحصلة من إجمالي الدرجات الكلية عبر كل الاختبارات
+  const totalEarnedScore = records.reduce((acc, r) => acc + r.score, 0);
+  const totalMaxScore = records.reduce((acc, r) => acc + r.maxScore, 0);
+  const overallPercent = totalMaxScore > 0 ? Math.round((totalEarnedScore / totalMaxScore) * 100) : 0;
 
   const questionCountByExam = useMemo(() => {
     const map: Record<string, number> = {};
@@ -68,39 +69,33 @@ export default function Grades({ records, exams }: GradesProps) {
     return matchesSearch && matchesCategory;
   });
 
-  const getLetterBadgeStyle = (letter: string) => {
-    if (letter.startsWith('A')) {
-      return 'bg-emerald-500/10 text-emerald-400 border-emerald-550/15';
-    } else if (letter.startsWith('B')) {
-      return 'bg-indigo-505/10 text-indigo-400 border-indigo-500/15';
-    } else if (letter.startsWith('C')) {
-      return 'bg-amber-500/10 text-amber-400 border-amber-500/15';
-    } else {
-      return 'bg-rose-500/10 text-rose-450 border-rose-500/15';
-    }
-  };
+  // النسبة المئوية هي مصدر الحقيقة للتقدير: حقل letter_grade يصل أحياناً
+  // بالعربية من الخادم وأحياناً بحروف لاتينية من الجلسة المحلية، فلا يصلح للتصنيف.
+  const getGradePercent = (grade: GradeRecord): number =>
+    grade.maxScore > 0 ? Math.round((grade.score / grade.maxScore) * 100) : 0;
 
-  const getGradeEmoji = (letter: string): string => {
-    if (letter.startsWith('A')) return '🟢';
-    if (letter.startsWith('B')) return '🔵';
-    if (letter.startsWith('C')) return '🟠';
-    if (letter.startsWith('D')) return '🟡';
+  const getGradeEmoji = (percent: number): string => {
+    if (percent >= 85) return '🟢';
+    if (percent >= 75) return '🔵';
+    if (percent >= 65) return '🟠';
+    if (percent >= 50) return '🟡';
     return '🔴';
   };
 
-  const getGradeBadgeStyle = (letter: string): string => {
-    if (letter.startsWith('A')) return 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400';
-    if (letter.startsWith('B')) return 'bg-blue-500/10 border-blue-500/20 text-blue-400';
-    if (letter.startsWith('C')) return 'bg-orange-500/10 border-orange-500/20 text-orange-400';
-    if (letter.startsWith('D')) return 'bg-amber-500/10 border-amber-500/20 text-amber-400';
+  const getGradeBadgeStyle = (percent: number): string => {
+    if (percent >= 85) return 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400';
+    if (percent >= 75) return 'bg-blue-500/10 border-blue-500/20 text-blue-400';
+    if (percent >= 65) return 'bg-orange-500/10 border-orange-500/20 text-orange-400';
+    if (percent >= 50) return 'bg-amber-500/10 border-amber-500/20 text-amber-400';
     return 'bg-rose-500/10 border-rose-500/20 text-rose-400';
   };
 
-  const getGradeLabel = (letter: string): string => {
-    if (letter.startsWith('A')) return 'ممتاز';
-    if (letter.startsWith('B')) return 'جيد جداً';
-    if (letter.startsWith('C')) return 'جيد';
-    if (letter.startsWith('D')) return 'مقبول';
+  // نفس سلم التقديرات المعتمد في الخادم (platform_result_project_grade)
+  const getGradeLabel = (percent: number): string => {
+    if (percent >= 85) return 'امتياز';
+    if (percent >= 75) return 'جيد جداً';
+    if (percent >= 65) return 'جيد';
+    if (percent >= 50) return 'مقبول';
     return 'ضعيف';
   };
 
@@ -126,13 +121,19 @@ export default function Grades({ records, exams }: GradesProps) {
 
         <div className="flex justify-between items-center">
           <h3 className="text-sm font-semibold text-indigo-100 mt-1">كشف درجات المسيرة الأكاديمية</h3>
-          <span className="text-[10px] font-black text-rose-300 bg-rose-500/15 border border-rose-500/10 px-2.5 py-0.5 rounded-full select-none">المعدل التراكمي المعتمد</span>
+          <span className="text-[10px] font-black text-rose-300 bg-rose-500/15 border border-rose-500/10 px-2.5 py-0.5 rounded-full select-none">المجموع الكلي المعتمد</span>
         </div>
 
         <div className="flex items-center justify-between gap-4">
           <div className="text-right">
-            <span className="text-3xl md:text-4xl font-black font-mono text-emerald-300 block pb-1">{averageGPA} <strong className="text-xs font-sans text-indigo-200">/ 4.00</strong></span>
-            <span className="text-[10px] text-indigo-100 font-sans block leading-none">{records.length > 0 ? `عدد الاختبارات المسجلة: ${records.length}` : 'لا توجد درجات بعد'}</span>
+            <span className="text-3xl md:text-4xl font-black font-mono text-emerald-300 block pb-1" dir="ltr">
+              {records.length > 0 ? `${totalEarnedScore} / ${totalMaxScore}` : '—'}
+            </span>
+            <span className="text-[10px] text-indigo-100 font-sans block leading-none">
+              {records.length > 0
+                ? `عدد الاختبارات المسجلة: ${records.length} • نسبة التحصيل الإجمالية: ${overallPercent}%`
+                : 'لا توجد درجات بعد'}
+            </span>
           </div>
         </div>
 
@@ -169,7 +170,7 @@ export default function Grades({ records, exams }: GradesProps) {
                     return sorted.map((grade, idx) => ({
                       name: `اختبار ${idx + 1}`,
                       date: grade.date,
-                      "نسبة التحصيل %": Math.round((grade.score / grade.maxScore) * 100),
+                      "نسبة التحصيل %": getGradePercent(grade),
                       score: grade.score,
                       maxScore: grade.maxScore,
                     }));
@@ -200,7 +201,10 @@ export default function Grades({ records, exams }: GradesProps) {
                       if (payload && payload[0]) return `${label} — ${payload[0].payload.date}`;
                       return label;
                     }}
-                    formatter={(value: number) => [`${value}%`, 'النتيجة']}
+                    formatter={(value: number, _name, props: any) => [
+                      `${props?.payload?.score ?? ''} / ${props?.payload?.maxScore ?? ''} (${value}%)`,
+                      'النتيجة',
+                    ]}
                   />
                   <Area
                     type="monotone"
@@ -281,7 +285,9 @@ export default function Grades({ records, exams }: GradesProps) {
               لا توجد درجات مرصودة مطابقة لفلترة البحث. 📋
             </div>
           ) : (
-            filteredGrades.map((grade) => (
+            filteredGrades.map((grade) => {
+              const gradePercent = getGradePercent(grade);
+              return (
               <motion.div
                 key={grade.id}
                 layoutId={`grade-card-log-${grade.id}`}
@@ -290,7 +296,7 @@ export default function Grades({ records, exams }: GradesProps) {
                 className="p-4.5 bg-slate-900/40 border border-slate-850/60 rounded-[20px] shadow-[0_2px_10px_rgba(15,23,42,0.012)] relative overflow-hidden hover:border-indigo-505/30 transition-all flex flex-col gap-3 text-right group"
               >
                 {/* Visual score marker */}
-                <div className="absolute right-0 top-0 bottom-0 w-1 bg-emerald-500 rounded-full" />
+                <div className={`absolute right-0 top-0 bottom-0 w-1 rounded-full ${grade.passed ? 'bg-emerald-500' : 'bg-rose-500'}`} />
 
                 <div className="flex justify-between items-start">
                   <div className="text-right">
@@ -304,34 +310,46 @@ export default function Grades({ records, exams }: GradesProps) {
                   </div>
 
                   {/* Grade badge */}
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold font-sans border shrink-0 ${getGradeBadgeStyle(grade.gradeLetter)}`}>
-                    {getGradeEmoji(grade.gradeLetter)}
-                    {getGradeLabel(grade.gradeLetter)}
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold font-sans border shrink-0 ${getGradeBadgeStyle(gradePercent)}`}>
+                    {getGradeEmoji(gradePercent)}
+                    {getGradeLabel(gradePercent)}
                   </span>
                 </div>
 
-                {/* Score slider metrics */}
-                <div className="space-y-1.5 pt-1">
-                  <div className="flex justify-between items-center text-[10px] text-slate-300 font-sans">
-                    <span>العلامة المحصلة: <strong className="text-white font-mono font-black">{grade.score}</strong> / {grade.maxScore}</span>
-                    <span>الوزن الأكاديمي: {grade.gpaWeight} pts</span>
+                {/* الدرجة المحصلة من الدرجة الكلية */}
+                <div className="flex items-center justify-between gap-3 p-3 bg-slate-950/60 rounded-2xl border border-slate-850/60">
+                  <div className="text-right">
+                    <span className="text-[9px] text-slate-400 block font-sans">الدرجة المحصلة من الدرجة الكلية</span>
+                    <span className="font-mono font-black text-white block mt-0.5" dir="ltr">
+                      <span className="text-xl text-emerald-400">{grade.score}</span>
+                      <span className="text-sm text-slate-400"> / {grade.maxScore}</span>
+                    </span>
                   </div>
+                  <div className="text-left shrink-0">
+                    <span className="text-[9px] text-slate-400 block font-sans">النسبة المئوية</span>
+                    <span className={`text-lg font-black font-mono block mt-0.5 ${gradePercent >= 50 ? 'text-indigo-400' : 'text-rose-400'}`}>{gradePercent}%</span>
+                  </div>
+                </div>
 
+                <div className="space-y-1.5">
                   <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden p-0.5">
-                    <div 
-                      className="h-full bg-indigo-600 rounded-full transition-all duration-1000" 
-                      style={{ width: `${(grade.score / grade.maxScore) * 100}%` }} 
+                    <div
+                      className={`h-full rounded-full transition-all duration-1000 ${grade.passed ? 'bg-indigo-600' : 'bg-rose-500'}`}
+                      style={{ width: `${Math.min(gradePercent, 100)}%` }}
                     />
                   </div>
                 </div>
 
                 {/* Trainer guidance block comments */}
-                <div className="p-3 bg-slate-950/50 rounded-xl border border-slate-900/40 text-[10px] text-slate-300 font-sans leading-normal">
-                  {grade.feedback}
-                </div>
+                {grade.feedback && (
+                  <div className="p-3 bg-slate-950/50 rounded-xl border border-slate-900/40 text-[10px] text-slate-300 font-sans leading-normal">
+                    {grade.feedback}
+                  </div>
+                )}
 
               </motion.div>
-            ))
+              );
+            })
           )}
         </AnimatePresence>
       </div>
