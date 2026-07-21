@@ -598,7 +598,7 @@ className="w-full h-10 pr-10 pl-3 rounded-xl bg-slate-950/60 text-text-primary b
 
                   {/* Student Phone */}
                   <div hidden={!showJoinField('student_phone')} className="space-y-1 text-right">
-                    <label htmlFor="join-student-phone" className="text-[11px] font-bold text-text-secondary">رقم الطالب الأخصائي (اختياري)</label>
+                    <label htmlFor="join-student-phone" className="text-[11px] font-bold text-text-secondary">رقم الطالب (اختياري)</label>
                     <div className="relative">
                       <input
                         id="join-student-phone"
