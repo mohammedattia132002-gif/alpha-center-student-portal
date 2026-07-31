@@ -609,7 +609,7 @@ className="w-full h-10 pr-10 pl-3 rounded-xl bg-slate-950/60 text-text-primary b
                         onChange={(e) => setStudentPhone(e.target.value)}
                         autoComplete="tel"
                         inputMode="tel"
-                        placeholder="مثال: 01548775412"
+                        placeholder="مثال: 01000000000"
                         className="w-full h-10 pr-10 pl-3 rounded-xl bg-slate-950/60 text-text-primary border border-slate-800/80 focus:border-indigo-505 transition-all text-xs font-mono"
                       />
                       <Phone className="w-3.5 h-3.5 text-slate-550 absolute top-3.5 right-3.5" />
@@ -693,7 +693,7 @@ className="w-full h-10 pr-10 pl-3 rounded-xl bg-slate-950/60 text-text-primary b
 
                   {/* Gender selection */}
                   <div hidden={!showJoinField('gender')} className="space-y-1 text-right">
-                    <label htmlFor="join-gender" className="text-[11px] font-bold text-slate-450">الجنس</label>
+                    <label htmlFor="join-gender" className="text-[11px] font-bold text-slate-450">النوع</label>
                     <div className="relative">
                       <select
                         id="join-gender"
