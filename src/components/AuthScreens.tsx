@@ -328,7 +328,7 @@ export default function AuthScreens({ onLoginSuccess, centerConfig }: AuthScreen
               <h2 className="text-lg font-bold text-text-secondary">بوابة تعليمية ذكية</h2>
             </div>
             <p className="text-xs text-text-muted leading-relaxed">
-              بوابة تعليمية ذكية تمنح الطلاب وأولياء الأمور وصولاً سريعًا إلى الحضور والغياب، والاشتراكات، والاختبارات الإلكترونية، والنتائج، والتقييمات، والإشعارات، عبر واجهة حديثة وآمنة توفر تجربة متابعة متكاملة في أي وقت.
+              مرحباً بك في بوابة سنتر الألفا التعليمية مع الأستاذ محمد عطية. تابع حضورك ودرجاتك واختباراتك وكل ما يخص دراستك بسهولة ومن أي مكان.
             </p>
             <div className="p-3 bg-slate-900/45 border border-slate-800 rounded-2xl flex items-center justify-between text-right mt-2">
               <span className="text-[10px] text-indigo-400 font-bold">الدعم الأكاديمي المباشر</span>
